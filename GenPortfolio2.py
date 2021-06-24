@@ -16,8 +16,19 @@ Closeprice = pd.DataFrame()
 US_benchmark = 'SPY'
 HK_benchmark = '2800.HK'
 CN_benchmark = '159919.SZ'
-tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
+
+#S&P 500 stock
+sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+sp_df = sp_table[0]
+tickers = set(sp_df['Symbol'].to_list())
+benchmarks = {US_benchmark, HK_benchmark, CN_benchmark}
+tickers = tickers.union(benchmarks) - set('APD') #filter 'APD'
+
+#plz use short list of data for testing
+# tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
+
 for i in tickers:
+    print(i)
     tmp = web.DataReader(i, 'yahoo', '1/1/2021', dt.date.today())
     Closeprice[i] = tmp['Adj Close']
 

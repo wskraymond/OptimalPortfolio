@@ -6,6 +6,8 @@ import scipy.optimize as solver
 import datetime as dt
 from functools import reduce
 import math
+from lib.loadTiingo import getLatestPriceFromTickers, getInfoFromTickers
+import sys
 
 # use pandas_datareader to get the close price data from Yahoo finance giving the stock tickets and date
 from scipy.optimize import minimize
@@ -27,10 +29,11 @@ tickers = tickers.union(benchmarks) - set('APD') #filter 'APD'
 #plz use short list of data for testing
 # tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
 
-for i in tickers:
-    print(i)
-    tmp = web.DataReader(i, 'yahoo', '1/1/2021', dt.date.today())
-    Closeprice[i] = tmp['Adj Close']
+tickers = ['LIT']
+# allLatestPrices is a dictionary
+allLatestPrices = getLatestPriceFromTickers(tickers, '2021-01-01', dt.date.today().isoformat())
+
+#TODO: need to parse dictionary into dataFrame format (Closeprice)
 
 # calculate the log return
 ##returns is a dataframe class
@@ -79,7 +82,7 @@ for i in tickers:
     df[i] = opt_result.x[j]
     j += 1
 
-df = pd.DataFrame(df,index=[0]).transpose()
+df = pd.DataFrame(df, index=[0]).transpose()
 print(df)
 df.to_csv(r'optimal.csv', index=True, header=True)
 

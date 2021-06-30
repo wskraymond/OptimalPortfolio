@@ -25,7 +25,7 @@ sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies
 sp_df = sp_table[0]
 tickers = set(sp_df['Symbol'].to_list())
 benchmarks = {US_benchmark}
-tickers = tickers.union(benchmarks) - set('APD') #filter 'APD'
+tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
 
 #plz use short list of data for testing
 # tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import pandas_datareader.data as web
+import pandas_datareader as pdr
 import matplotlib.pyplot as plt
 import scipy.optimize as solver
 import datetime as dt
@@ -23,17 +24,18 @@ CN_benchmark = '159919.SZ'
 sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
 sp_df = sp_table[0]
 tickers = set(sp_df['Symbol'].to_list())
-benchmarks = {US_benchmark, HK_benchmark, CN_benchmark}
+benchmarks = {US_benchmark}
 tickers = tickers.union(benchmarks) - set('APD') #filter 'APD'
 
 #plz use short list of data for testing
 # tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
 
-tickers = ['LIT']
-# allLatestPrices is a dictionary
-allLatestPrices = getLatestPriceFromTickers(tickers, '2021-01-01', dt.date.today().isoformat())
-
-#TODO: need to parse dictionary into dataFrame format (Closeprice)
+#use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
+apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
+for i in tickers:
+    print(i)
+    tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2010', end=dt.date.today(), retry_count=5, api_key=apiToken)
+    Closeprice[i] = tmp['adjClose']
 
 # calculate the log return
 ##returns is a dataframe class

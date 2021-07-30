@@ -40,7 +40,7 @@ for i in tickers:
 
 # calculate the log return
 ##returns is a dataframe class
-returns = np.log(Closeprice / Closeprice.shift(1))
+returns = ( Closeprice / Closeprice.shift(1) ) - 1
 
 
 def get_ret_vol_sr(weights):

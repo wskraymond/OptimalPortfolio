@@ -13,7 +13,8 @@ import sys
 # use pandas_datareader to get the close price data from Yahoo finance giving the stock tickets and date
 from scipy.optimize import minimize
 
-margin_rate = math.log(1.03, math.e)
+no_of_days = 63 #quaterly
+single_period_margin_rate = 0.03
 
 Closeprice = pd.DataFrame()
 US_benchmark = 'SPY'
@@ -21,20 +22,21 @@ HK_benchmark = '2800.HK'
 CN_benchmark = '159919.SZ'
 
 #S&P 500 stock
-sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-sp_df = sp_table[0]
-tickers = set(sp_df['Symbol'].to_list())
-benchmarks = {US_benchmark}
-tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+# sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+# sp_df = sp_table[0].head(2)   ###testing first 30 stocks
+# tickers = set(sp_df['Symbol'].to_list())
+# benchmarks = {US_benchmark}
+# tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
 
 #plz use short list of data for testing
 # tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
+tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
 
 #use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
 apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
 for i in tickers:
     print(i)
-    tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2010', end=dt.date.today(), retry_count=5, api_key=apiToken)
+    tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2020', end=dt.date.today(), retry_count=5, api_key=apiToken)
     tmp.reset_index('symbol', inplace=True, drop=True)
     Closeprice[i] = tmp['adjClose']
 
@@ -45,9 +47,18 @@ returns = np.log(Closeprice / Closeprice.shift(1))
 
 def get_ret_vol_sr(weights):
     weights = np.array(weights)
-    ret = np.sum(returns.mean() * weights) * 252
-    vol = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
-    sr = (ret - margin_rate) / vol
+    mean = np.exp(returns.mean() * no_of_days)
+    # print(mean)
+    diff = np.exp(-1*np.sqrt(returns.cov() * no_of_days))
+    std = np.subtract(np.multiply(mean, diff), mean)
+    cov = np.power(std, 2)
+    # print(cov)
+
+    mean = np.subtract(mean,1)
+
+    ret = np.sum(mean * weights)
+    vol = np.sqrt(np.dot(weights.T, np.dot(cov, weights)))
+    sr = (ret - single_period_margin_rate) / vol
     return np.array([ret, vol, sr])
 
 

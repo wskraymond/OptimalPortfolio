@@ -22,7 +22,7 @@ CN_benchmark = '159919.SZ'
 
 #S&P 500 stock
 sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-sp_df = sp_table[0]
+sp_df = sp_table[0].head(2)     # First 10 stocks for testing
 tickers = set(sp_df['Symbol'].to_list())
 benchmarks = {US_benchmark}
 tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'

@@ -11,3 +11,9 @@ table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
 df = table[0]
 
 print(set(df['Symbol'].to_list()))
+
+
+table=pd.read_html('https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average')
+df = table[1]
+
+print(set(df['Symbol'].to_list()))

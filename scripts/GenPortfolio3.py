@@ -21,16 +21,25 @@ US_benchmark = 'SPY'
 HK_benchmark = '2800.HK'
 CN_benchmark = '159919.SZ'
 
+#DJ Index
+table=pd.read_html('https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average')
+dj_df = table[1]  #.head(2)
+tickers = set(dj_df['Symbol'].to_list())
+benchmarks = {US_benchmark}
+tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+tickers = list(tickers)
+
 #S&P 500 stock
 # sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
 # sp_df = sp_table[0].head(2)   ###testing first 2 stocks
 # tickers = set(sp_df['Symbol'].to_list())
 # benchmarks = {US_benchmark}
 # tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+# tickers = list(tickers)
 
 #plz use short list of data for testing
 # tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
-tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
+# tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
 
 #use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
 apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
@@ -127,8 +136,51 @@ df.to_csv(r'ui/output/optimal.csv', index=True, header=True)
 # We want the key x from the dictionary, which is an array with the weights of the portfolio that has the maximum Sharpe ratio.
 # If we use our function get_ret_vol_sr we get the return, volatility, and sharpe ratio:
 sr_data = get_ret_vol_sr(opt_result.x)
-ret_percent = math.exp(sr_data[0]) - 1
-vol_percent = math.exp(sr_data[1])
+ret_percent = sr_data[0]
+vol_percent = sr_data[1]
 sr_ratio = sr_data[2]
 
-print("ret_percent", ret_percent, "vol_percent", vol_percent, "sr_ratio", sr_ratio)
+print("ret_percent=", ret_percent, "vol_percent=", vol_percent, "sr_ratio=", sr_ratio)
+
+#https://matplotlib.org/stable/gallery/pie_and_polar_charts/pie_and_donut_labels.html
+# fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
+#
+# data = df[0].values
+# labels = df[0].index
+#
+# wedges, texts, autotexts = ax.pie(data, autopct='%1.1f%%',
+#                                   textprops=dict(color="w"))
+#
+# ax.legend(wedges, labels,
+#           title="Ingredients",
+#           loc="center left",
+#           bbox_to_anchor=(1, 0, 0.5, 1))
+#
+# plt.setp(autotexts, size=8, weight="bold")
+#
+# plt.show()
+
+
+fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
+
+data = df[0].values
+
+wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=-40)
+
+bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
+kw = dict(arrowprops=dict(arrowstyle="-"),
+          bbox=bbox_props, zorder=0, va="center")
+
+for i, p in enumerate(wedges):
+    ang = (p.theta2 - p.theta1)/2. + p.theta1
+    y = np.sin(np.deg2rad(ang))
+    x = np.cos(np.deg2rad(ang))
+    horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+    connectionstyle = "angle,angleA=0,angleB={}".format(ang)
+    kw["arrowprops"].update({"connectionstyle": connectionstyle})
+    ax.annotate("{:.2%} {}".format(data[i],df[0].index[i]), xy=(x, y), xytext=(1.35*np.sign(x), 1.4*y),
+                horizontalalignment=horizontalalignment, **kw)
+
+ax.set_title("Optimal Portfolio")
+
+plt.show()

@@ -6,6 +6,8 @@ python
 3. do the analysis to find out the tangent portfolio
 4. excel read csv file input and your own position for portfolio management
 
+![Alt text](./piechart.png?raw=true "GenPortfolio3.py")
+
 
 
 # Virtual Environment setup

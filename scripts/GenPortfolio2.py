@@ -1,11 +1,14 @@
 import pandas as pd
 import numpy as np
 import pandas_datareader.data as web
+import pandas_datareader as pdr
 import matplotlib.pyplot as plt
 import scipy.optimize as solver
 import datetime as dt
 from functools import reduce
 import math
+from lib.loadTiingo import getLatestPriceFromTickers, getInfoFromTickers
+import sys
 
 # use pandas_datareader to get the close price data from Yahoo finance giving the stock tickets and date
 from scipy.optimize import minimize
@@ -19,22 +22,25 @@ CN_benchmark = '159919.SZ'
 
 #S&P 500 stock
 sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-sp_df = sp_table[0]
+sp_df = sp_table[0].head(2)     # First 10 stocks for testing
 tickers = set(sp_df['Symbol'].to_list())
-benchmarks = {US_benchmark, HK_benchmark, CN_benchmark}
-tickers = tickers.union(benchmarks) - set('APD') #filter 'APD'
+benchmarks = {US_benchmark}
+tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
 
 #plz use short list of data for testing
 # tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
 
+#use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
+apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
 for i in tickers:
     print(i)
-    tmp = web.DataReader(i, 'yahoo', '1/1/2021', dt.date.today())
-    Closeprice[i] = tmp['Adj Close']
+    tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2010', end=dt.date.today(), retry_count=5, api_key=apiToken)
+    tmp.reset_index('symbol', inplace=True, drop=True)
+    Closeprice[i] = tmp['adjClose']
 
 # calculate the log return
 ##returns is a dataframe class
-returns = np.log(Closeprice / Closeprice.shift(1))
+returns = ( Closeprice / Closeprice.shift(1) ) - 1
 
 
 def get_ret_vol_sr(weights):
@@ -79,7 +85,7 @@ for i in tickers:
     df[i] = opt_result.x[j]
     j += 1
 
-df = pd.DataFrame(df,index=[0]).transpose()
+df = pd.DataFrame(df, index=[0]).transpose()
 print(df)
 df.to_csv(r'optimal.csv', index=True, header=True)
 

@@ -7,7 +7,7 @@ import scipy.optimize as solver
 import datetime as dt
 from functools import reduce
 import math
-from lib.loadTiingo import getLatestPriceFromTickers, getInfoFromTickers
+# from lib.loadTiingo import getLatestPriceFromTickers, getInfoFromTickers
 import sys
 
 # use pandas_datareader to get the close price data from Yahoo finance giving the stock tickets and date

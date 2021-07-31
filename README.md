@@ -13,8 +13,10 @@ python
 2. py -m venv myenv  #venv for python3 , env folder name: myenv
 3. cd myenv/Script
 4. .\pip.exe install -r ..\..\requirements.txt  #using pip in myenv/Script , here is window example
-5. .\]pip.exe list
+5. .\pip.exe list
 6. configure intellij to myenv 
       refer to https://www.jetbrains.com/help/pycharm/creating-virtual-environment.html#python_create_virtual_env
+     
+7. .\python.exe ..\..\scripts\GenPortfolio3.py
       
 

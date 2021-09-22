@@ -9,17 +9,26 @@ import seaborn as sns
 from scipy import stats
 from sklearn import linear_model
 import math
+import pandas_datareader as pdr
 
-margin_rate = 1
-Closeprice = pd.DataFrame()
-tickers = {'BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk'}
 US_benchmark = 'SPY'
 HK_benchmark = '2800.HK'
 CN_benchmark = '159919.SZ'
-benchmarks = {US_benchmark, HK_benchmark, CN_benchmark}
+margin_rate = 1
+Closeprice = pd.DataFrame()
+# tickers = {'BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk'}
+tickers = {'BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM'}
+# benchmarks = {US_benchmark, HK_benchmark, CN_benchmark}
+benchmarks = {US_benchmark}
+
+apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
 for i in tickers.union(benchmarks):
-    tmp = web.DataReader(i, 'yahoo', '1/4/2021', dt.date.today())
-    Closeprice[i] = tmp['Adj Close']
+    # tmp = web.DataReader(i, 'yahoo', '1/0/2010', dt.date.today())
+    # Closeprice[i] = tmp['Adj Close']
+
+    tmp = pdr.get_data_tiingo(symbols=i, start='1/1/2021', end=dt.date.today(), retry_count=5, api_key=apiToken)
+    tmp.reset_index('symbol', inplace=True, drop=True)
+    Closeprice[i] = tmp['adjClose']
 
 
 #calculate the log return
@@ -35,9 +44,9 @@ for i in tickers.union(benchmarks):
         betas[i][j] = slope
 
 betas = pd.DataFrame(betas).transpose()
-print(betas)
+print("betas=", betas)
 
-betas.to_csv(r'beta.csv', index=True, header=True)
+betas.to_csv(r'ui/output/beta.csv', index=True, header=True)
 
 size = len(tickers) + len(benchmarks)
 
@@ -47,9 +56,9 @@ size = len(tickers) + len(benchmarks)
 #lognormal
 ret_arr = returns.mean()
 ret_arr = pd.DataFrame(ret_arr)
-print(ret_arr)
+print("ret_arr=", ret_arr)
 
-ret_arr.to_csv(r'log_daily_return.csv', index=True, header=True)
+ret_arr.to_csv(r'ui/output/log_daily_return.csv', index=True, header=True)
 
 # Expected volatility
 #percent : exp(-x) != exp(+x) ???
@@ -58,14 +67,9 @@ ret_arr.to_csv(r'log_daily_return.csv', index=True, header=True)
 #log normal value
 vol_arr = returns.var()
 vol_arr = pd.DataFrame(vol_arr)
-print(vol_arr)
+print("vol_arr=", vol_arr)
 
-vol_arr.to_csv(r'log_daily_var.csv', index=True, header=True)
-
-# Sharpe Ratio
-sharpe_arr = np.subtract(ret_arr, margin_rate) / vol_arr
-
-print(sharpe_arr)
+vol_arr.to_csv(r'ui/output/log_daily_var.csv', index=True, header=True)
 
 
 

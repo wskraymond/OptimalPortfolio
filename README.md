@@ -20,7 +20,7 @@ python
       refer to https://www.jetbrains.com/help/pycharm/creating-virtual-environment.html#python_create_virtual_env
      
 
-#Virutalenv Activate
+# Virutalenv Activate
 ```bash
 .\myenv\Scripts\activate.bat  #set Env to virutalenv Path 
 ```

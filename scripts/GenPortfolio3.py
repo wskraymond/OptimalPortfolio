@@ -22,32 +22,36 @@ HK_benchmark = '2800.HK'
 CN_benchmark = '159919.SZ'
 
 #DJ Index
-table=pd.read_html('https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average')
-dj_df = table[1]  #.head(2)
-tickers = set(dj_df['Symbol'].to_list())
-benchmarks = {US_benchmark}
-tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
-tickers = list(tickers)
-
-#S&P 500 stock
-# sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-# sp_df = sp_table[0].head(2)   ###testing first 2 stocks
-# tickers = set(sp_df['Symbol'].to_list())
+# table=pd.read_html('https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average')
+# dj_df = table[1]  #.head(2)
+# tickers = set(dj_df['Symbol'].to_list())
 # benchmarks = {US_benchmark}
 # tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
 # tickers = list(tickers)
+
+#S&P 500 stock
+sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
+tickers = set(sp_df['Symbol'].to_list())
+benchmarks = {US_benchmark}
+tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+tickers = list(tickers)
 
 #plz use short list of data for testing
 # tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
 # tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
 
+
 #use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
 apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
 for i in tickers:
-    print(i)
-    tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2021', end=dt.date.today(), retry_count=5, api_key=apiToken)
-    tmp.reset_index('symbol', inplace=True, drop=True)
-    Closeprice[i] = tmp['adjClose']
+    try:
+        print(i)
+        tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
+        tmp.reset_index('symbol', inplace=True, drop=True)
+        Closeprice[i] = tmp['adjClose']
+    except:
+        print("symbol="+i+" cannot be resolved")
 
 # calculate the log return
 ##returns is a dataframe class
@@ -109,12 +113,12 @@ def check_sum(weights):
 # since the weight can range from 0 to 1.
 
 cons = ({'type': 'eq', 'fun': check_sum})
-bounds = [[0] * 2] * len(tickers)
+bounds = [[0] * 2] * len(Closeprice)
 bounds[0][1] = 1
 # print(bounds)
-equal_size = 1 / len(tickers)
+equal_size = 1 / len(Closeprice)
 print("equal_size=", equal_size)
-init_guess = [equal_size] * len(tickers)
+init_guess = [equal_size] * len(Closeprice)
 print("init_guess=", init_guess)
 
 opt_result = minimize(neg_sharpe, init_guess, method='SLSQP', bounds=bounds, constraints=cons)

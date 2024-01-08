@@ -48,7 +48,7 @@ corr_matrix = df[sum_corr].corr()
 print("corr_matrix=", corr_matrix)
 corr_matrix.to_csv(r'ui/output/corr.csv', index=True, header=True)
 
-#plt.figure(figsize=(13, 8))
-#cmap options: “RdYlGn_r”, “summer_r”, “Blues”, and “Greens”
-#sns.heatmap(corr_matrix, annot=True, cmap="RdYlGn_r")
-#plt.show()
+plt.figure(figsize=(13, 8))
+# cmap options: “RdYlGn_r”, “summer_r”, “Blues”, and “Greens”
+sns.heatmap(corr_matrix, annot=True, cmap="RdYlGn_r")
+plt.show()

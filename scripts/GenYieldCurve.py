@@ -10,7 +10,7 @@ yc = yc[['1m', '3m', '2yr', '5yr', '10yr', '20yr', '30yr']]
 
 print(yc)
 
-yc.loc['2021-06-28'].plot(label='Jun 28')
+yc.loc['2022-06-28'].plot(label='Jun 28')
 yc.loc['2021-05-28'].plot(label='May 28')
 # yc.loc['2021-04-28'].plot(label='Apr 28')
 yc.loc['2019-01-02'].plot(label='Jan 01, 2019', color='red')

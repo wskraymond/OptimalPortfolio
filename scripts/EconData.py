@@ -9,18 +9,6 @@ import seaborn as sns
 from scipy import stats
 from sklearn import linear_model
 import math
-
-margin_rate = 1
-Closeprice = pd.DataFrame()
-tickers = {'BRK-B','LIT','ARKK','BIDU','MSOS','ARKQ','DBC','BABA'}
-US_benchmark = 'SPY'
-HK_benchmark = '2800.HK'
-CN_benchmark = '159919.SZ'
-benchmarks = {US_benchmark, HK_benchmark, CN_benchmark}
-# for i in tickers.union(benchmarks):
-#     tmp = web.DataReader(i, 'yahoo', '1/1/2010', dt.date.today())
-#     Closeprice[i] = tmp['Adj Close']
-
 #Real GDP USA
 #https://www.econdb.com/
 f = web.DataReader('ticker=RGDPUS', 'econdb')

@@ -38,7 +38,7 @@ CN_benchmark = '159919.SZ'
 # tickers = list(tickers)
 
 #plz use short list of data for testing
-tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark , HK_benchmark,CN_benchmark]
+tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]
 # tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
 
 

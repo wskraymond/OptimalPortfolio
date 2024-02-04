@@ -22,14 +22,14 @@ tickers = {'BRK-B', 'LIT', 'MSFT', 'AMZN', 'DBC', 'TSLA', 'NVDA'}
 benchmarks = {US_benchmark}
 
 apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
-recvTickers = {}
+recvTickers=[]
 for i in tickers.union(benchmarks):
     try:
         print(i)
-        tmp = pdr.get_data_tiingo(symbols=i, start='1/1/2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
+        tmp = pdr.get_data_tiingo(symbols=i, start='1/1/2021', end=dt.date.today(), retry_count=5, api_key=apiToken)
         tmp.reset_index('symbol', inplace=True, drop=True)
         Closeprice[i] = tmp['adjClose']
-        recvTickers.add(i)
+        recvTickers.append(i)
     except:
         print("symbol=", i, " cannot be resolved")
 
@@ -39,7 +39,7 @@ returns = np.log(Closeprice / Closeprice.shift(1))
 # print(np.nan_to_num(returns[benchmark].values))
 
 betas = {}
-for i in recvTickers.union(benchmarks):
+for i in recvTickers:
     betas[i] = {}
     for j in benchmarks:
         slope, intercept, r, p, std_err = stats.linregress(np.nan_to_num(returns[j].values),
@@ -51,7 +51,7 @@ print("betas=", betas)
 
 betas.to_csv(r'ui/output/beta.csv', index=True, header=True)
 
-size = len(recvTickers) + len(benchmarks)
+size = len(recvTickers)
 
 # Expected return
 # normal value

@@ -30,28 +30,30 @@ CN_benchmark = '159919.SZ'
 # tickers = list(tickers)
 
 #S&P 500 stock
-sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
-tickers = set(sp_df['Symbol'].to_list())
-benchmarks = {US_benchmark}
-tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
-tickers = list(tickers)
+# sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+# sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
+# tickers = set(sp_df['Symbol'].to_list())
+# benchmarks = {US_benchmark}
+# tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+# tickers = list(tickers)
 
 #plz use short list of data for testing
-# tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark,CN_benchmark]
+tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark , HK_benchmark,CN_benchmark]
 # tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
 
 
 #use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
 apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
+recvTickers=[]
 for i in tickers:
     try:
         print(i)
         tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
         tmp.reset_index('symbol', inplace=True, drop=True)
         Closeprice[i] = tmp['adjClose']
+        recvTickers.append(i)
     except:
-        print("symbol="+i+" cannot be resolved")
+        print("symbol=",i," cannot be resolved")
 
 # calculate the log return
 ##returns is a dataframe class
@@ -71,7 +73,7 @@ var = pd.DataFrame()
 for i in range(0, std.size):
     scalar = std[i]
     ds = std*scalar
-    var[tickers[i]] = ds
+    var[recvTickers[i]] = ds
 
 # print("var")
 # print(var)
@@ -112,13 +114,15 @@ def check_sum(weights):
 # Our initial guess will be 25% for each stock (or 0.25), and the bounds will be a tuple (0,1) for each stock,
 # since the weight can range from 0 to 1.
 
+print("The number of stocks retrieved=", len(recvTickers))
+
 cons = ({'type': 'eq', 'fun': check_sum})
-bounds = [[0] * 2] * len(Closeprice)
+bounds = [[0] * 2] * len(recvTickers)
 bounds[0][1] = 1
 # print(bounds)
-equal_size = 1 / len(Closeprice)
+equal_size = 1 / len(recvTickers)
 print("equal_size=", equal_size)
-init_guess = [equal_size] * len(Closeprice)
+init_guess = [equal_size] * len(recvTickers)
 print("init_guess=", init_guess)
 
 opt_result = minimize(neg_sharpe, init_guess, method='SLSQP', bounds=bounds, constraints=cons)
@@ -129,7 +133,7 @@ print("total", total)
 df = {}
 
 j = 0
-for i in tickers:
+for i in recvTickers:
     df[i] = opt_result.x[j]
     j += 1
 

@@ -21,7 +21,16 @@ python
 6. configure intellij to myenv 
       refer to https://www.jetbrains.com/help/pycharm/creating-virtual-environment.html#python_create_virtual_env
      
-7. .\python.exe ..\..\scripts\GenPortfolio3.py
+
+# Virutalenv Activate
+```bash
+.\myenv\Scripts\activate.bat  #set Env to virutalenv Path 
+```
+
+# Run
+```bash
+python .\scripts\GenPortfolio3.py 
+```
       
 
 ## Tips for Panda performance improvement

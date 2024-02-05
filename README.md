@@ -1,6 +1,6 @@
-#Optimal Portfolio
-python 
+# Optimal Portfolio
 
+Steps
 1. read stock close price from data source
 2. generate risk and return data 
 3. do the analysis to find out the tangent portfolio
@@ -34,6 +34,7 @@ python .\scripts\GenPortfolio3.py
       
 
 ## Tips for Panda performance improvement
+
 1. Python’s dynamic nature makes it slower than compiled languages. This issue is exacerbated in scientific computing because we run simple operations millions of times.
 2. Don’t loop over your data. Instead, vectorize your operations (remember Hector Vector).
 3. You can use numpy directly by calling .to_numpy() on the Dataframe, which can be even faster.
@@ -41,20 +42,20 @@ python .\scripts\GenPortfolio3.py
 5. Use parquet to store your data. Use snappy compression (or none at all) during development, resorting to gzip for long-term archival.
 
 
-###dtype in DataFrames
+### dtype in DataFrames
 In pandas DataFrames, the dtype is a critical attribute that specifies the data type for each column. 
 Therefore, selecting the appropriate dtype for each column in a DataFrame is key.
 
 ![alt text](doc/numpy-array.avif?raw=true "numpy")
 ![alt text](doc/python-list.avif?raw=true "python")
 
-####The object type
+#### The object type
 Because pandas stores strings as objects, it has to fall back on slow Python arrays. 
 In contrast to numpy, a Python `list` has a pointer to a memory-contiguous buffer 
 of **pointers**, which point to objects stored in memory, but which also reference data stored in other locations.
 
 
-####Numeric
+#### Numeric
 Regarding ints and floats, downcasting is the key to saving memory. 
 Pandas supports 8, 16, 32, and 64-bit signed and unsigned integers and 16, 32, 
 and 64-bit floats. By default, it opts to use 64-bit variants for both types.

@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import xarray as xr
 
 s = pd.Series()
 print(s)
@@ -144,3 +145,11 @@ print(df) # row indices doesn't change
 # drop func
 df = df.drop(1)
 print(df)
+
+# Panel is deprecated
+# use xarray instead
+da = xr.DataArray([9, 0, 2, 1, 0],
+                  dims=['x'],
+                  coords={'x': [10, 20, 30, 40, 50]})
+
+print(da)

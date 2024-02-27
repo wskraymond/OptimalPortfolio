@@ -30,15 +30,15 @@ CN_benchmark = '159919.SZ'
 # tickers = list(tickers)
 
 #S&P 500 stock
-# sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-# sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
-# tickers = set(sp_df['Symbol'].to_list())
-# benchmarks = {US_benchmark}
-# tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
-# tickers = list(tickers)
+sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
+tickers = set(sp_df['Symbol'].to_list())
+benchmarks = {US_benchmark}
+tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+tickers = list(tickers)
 
 #plz use short list of data for testing
-tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]
+# tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]
 # tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
 
 
@@ -48,7 +48,8 @@ recvTickers=[]
 for i in tickers:
     try:
         print(i)
-        tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
+        #representations (e.g., 'JAN-01-2010', '1/1/10', 'Jan, 1, 1980')
+        tmp = pdr.get_data_tiingo(symbols=i,start='NOV-01-2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
         tmp.reset_index('symbol', inplace=True, drop=True)
         Closeprice[i] = tmp['adjClose']
         recvTickers.append(i)

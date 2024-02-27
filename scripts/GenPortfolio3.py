@@ -48,7 +48,8 @@ recvTickers=[]
 for i in tickers:
     try:
         print(i)
-        tmp = pdr.get_data_tiingo(symbols=i,start='1/1/2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
+        #representations (e.g., 'JAN-01-2010', '1/1/10', 'Jan, 1, 1980')
+        tmp = pdr.get_data_tiingo(symbols=i,start='NOV-01-2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
         tmp.reset_index('symbol', inplace=True, drop=True)
         Closeprice[i] = tmp['adjClose']
         recvTickers.append(i)

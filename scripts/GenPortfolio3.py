@@ -30,15 +30,15 @@ CN_benchmark = '159919.SZ'
 # tickers = list(tickers)
 
 #S&P 500 stock
-# sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-# sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
-# tickers = set(sp_df['Symbol'].to_list())
-# benchmarks = {US_benchmark}
-# tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
-# tickers = list(tickers)
+sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
+tickers = set(sp_df['Symbol'].to_list())
+benchmarks = {US_benchmark}
+tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+tickers = list(tickers)
 
 #plz use short list of data for testing
-tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]
+# tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]
 # tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
 
 

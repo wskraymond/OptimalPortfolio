@@ -6,7 +6,7 @@ Steps
 3. do the analysis to find out the tangent portfolio
 4. excel read csv file input and your own position for portfolio management
 
-![alt text](doc/piechart.png?raw=true "GenPortfolio3.py")
+![alt text](doc/2023_spy_optimal.png?raw=true "GenPortfolio3.py")
 ![alt text](doc/correlation.png?raw=true "Correlation.py")
 ![alt text](doc/yield_curve.png?raw=true "GenYieldCurve.py")
 

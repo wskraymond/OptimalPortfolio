@@ -18,6 +18,7 @@ single_period_margin_rate = 0.03
 
 Closeprice = pd.DataFrame()
 US_benchmark = 'SPY'
+JP_benchmark = '1329.T'
 HK_benchmark = '2800.HK'
 CN_benchmark = '159919.SZ'
 
@@ -36,6 +37,14 @@ tickers = set(sp_df['Symbol'].to_list())
 benchmarks = {US_benchmark}
 tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
 tickers = list(tickers)
+
+#Nikkei 225 stock
+# nk_df=pd.read_csv("csv/nikkei_225_list.csv")
+# stockCode = filter(lambda str: str.isnumeric(), nk_df['Symbol'].to_list())
+# tickers = set([s + '.T' for s in stockCode])
+# benchmarks = {JP_benchmark}
+# tickers = tickers.union(benchmarks)
+# tickers = list(tickers)
 
 #plz use short list of data for testing
 # tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]

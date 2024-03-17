@@ -37,3 +37,13 @@ for index, el in np.ndenumerate(arr):
 arr2 = np.array([1, 2, 3, 4, 5,6,7,8])
 transformed = arr2.reshape(2,4)
 print(transformed)
+
+
+# Python list to Numpy Array
+a = [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+a = np.array(a)
+print(a.shape)
+
+a = a.T
+print(a)
+print(a.shape)

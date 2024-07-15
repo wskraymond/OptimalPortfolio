@@ -21,6 +21,8 @@ US_benchmark = 'SPY'
 JP_benchmark = '1329.T'
 HK_benchmark = '2800.HK'
 CN_benchmark = '159919.SZ'
+Gold = 'IAU'
+BTC = 'IBIT'
 
 #DJ Index
 # table=pd.read_html('https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average')
@@ -34,7 +36,7 @@ CN_benchmark = '159919.SZ'
 sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
 sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
 tickers = set(sp_df['Symbol'].to_list())
-benchmarks = {US_benchmark}
+benchmarks = {US_benchmark, JP_benchmark, Gold, BTC}
 tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
 tickers = list(tickers)
 

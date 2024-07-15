@@ -1,46 +1,77 @@
 import pandas as pd
 import numpy as np
-import pandas_datareader.data as web
 import pandas_datareader as pdr
 import matplotlib.pyplot as plt
-import scipy.optimize as solver
 import datetime as dt
-from functools import reduce
-import math
-# from lib.loadTiingo import getLatestPriceFromTickers, getInfoFromTickers
-import sys
-
-# use pandas_datareader to get the close price data from Yahoo finance giving the stock tickets and date
 from scipy.optimize import minimize
+from argparse import ArgumentParser
+import math
+from pandas_datareader.data import DataReader as dr
 
-no_of_days = 63 #quaterly
-single_period_margin_rate = 0.03
+parser = ArgumentParser(
+    prog='PorfolioOptimizer',
+    description='PorfolioOptimizer')
+parser.add_argument('--holdingPeriodYear', default='0.25', type=float)
+parser.add_argument(
+    '--startdate',
+    required=True,
+    help="e.g 'JAN-01-2010', '1/1/10', 'Jan, 1, 1980'"
+)
+
+args = parser.parse_args()
+print("holdingPeriodYear=", args.holdingPeriodYear, "startdate=",args.startdate)
+holdingPeriodYear = args.holdingPeriodYear
+
+syms = ['DGS30', 'DGS20', 'DGS10', 'DGS5', 'DGS2', 'DGS1', 'DGS1MO', 'DGS3MO']
+yc = dr(syms, 'fred', '1/1/2024', dt.date.today())  # could specify start date with start param here
+names = dict(zip(syms, ['30yr', '20yr', '10yr', '5yr', '2yr', '1yr', '1m', '3m']))
+yc = yc.rename(columns=names)
+yc = yc[['1m', '3m', '1yr', '2yr', '5yr', '10yr', '20yr', '30yr']]
+
+no_of_days = 252 * holdingPeriodYear  # number of days for a quarter = 63
+
+if holdingPeriodYear == 0.25:
+    single_period_margin_rate = yc.iloc[-1]['3m'] / 100 / 4
+elif holdingPeriodYear == 1:
+    single_period_margin_rate = yc.iloc[-1]['1yr'] / 100
+elif holdingPeriodYear == 2:
+    single_period_margin_rate = math.pow(1 + yc.iloc[-1]['2yr'] / 100, 2) - 1
+elif holdingPeriodYear == 5:
+    single_period_margin_rate = math.pow(1 + yc.iloc[-1]['5yr'] / 100, 5) - 1
+elif holdingPeriodYear == 10:
+    single_period_margin_rate = math.pow(1 + yc.iloc[-1]['10yr'] / 100, 10) - 1
+else:
+    raise Exception("unsupported holding period")
+
+print("single_period_margin_rate=", single_period_margin_rate)
 
 Closeprice = pd.DataFrame()
 US_benchmark = 'SPY'
+QQQ_benchmark = 'QQQ'
+TW_benchmark = 'EWT'
 JP_benchmark = '1329.T'
 HK_benchmark = '2800.HK'
 CN_benchmark = '159919.SZ'
 Gold = 'IAU'
 BTC = 'IBIT'
 
-#DJ Index
+# DJ Index
 # table=pd.read_html('https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average')
-# dj_df = table[1]  #.head(2)
+# dj_df = table[1]
 # tickers = set(dj_df['Symbol'].to_list())
 # benchmarks = {US_benchmark}
-# tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+# tickers = tickers.union(benchmarks)
 # tickers = list(tickers)
 
-#S&P 500 stock
-sp_table=pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-sp_df = sp_table[0] #.head(2)   ###testing first 2 stocks
+# S&P 500 stock
+sp_table = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+sp_df = sp_table[0]
 tickers = set(sp_df['Symbol'].to_list())
-benchmarks = {US_benchmark, JP_benchmark, Gold, BTC}
-tickers = tickers.union(benchmarks) #- set('APD') #filter 'APD'
+benchmarks = {US_benchmark, QQQ_benchmark, JP_benchmark,TW_benchmark, HK_benchmark, CN_benchmark, Gold, BTC}
+tickers = tickers.union(benchmarks)
 tickers = list(tickers)
 
-#Nikkei 225 stock
+# Nikkei 225 stock
 # nk_df=pd.read_csv("csv/nikkei_225_list.csv")
 # stockCode = filter(lambda str: str.isnumeric(), nk_df['Symbol'].to_list())
 # tickers = set([s + '.T' for s in stockCode])
@@ -48,66 +79,45 @@ tickers = list(tickers)
 # tickers = tickers.union(benchmarks)
 # tickers = list(tickers)
 
-#plz use short list of data for testing
-# tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]
-# tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
 
-
-#use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
+# use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
 apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
-recvTickers=[]
+recvTickers = []
 for i in tickers:
     try:
         print(i)
-        #representations (e.g., 'JAN-01-2010', '1/1/10', 'Jan, 1, 1980')
-        tmp = pdr.get_data_tiingo(symbols=i,start='NOV-01-2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
+        # representations (e.g., 'JAN-01-2010', '1/1/10', 'Jan, 1, 1980')
+        tmp = pdr.get_data_tiingo(symbols=i, start=args.startdate, end=dt.date.today(), retry_count=5, api_key=apiToken)
         tmp.reset_index('symbol', inplace=True, drop=True)
         Closeprice[i] = tmp['adjClose']
         recvTickers.append(i)
     except:
-        print("symbol=",i," cannot be resolved")
+        print("symbol=", i, " cannot be resolved")
 
 # calculate the log return
-##returns is a dataframe class
+# returns is a dataframe class
 returns = np.log(Closeprice / Closeprice.shift(1))
 
 mean_1 = np.exp(returns.mean() * no_of_days)
-# print("mean_1")
-# print(mean_1)
 log_var = returns.var(skipna=True) * no_of_days
-# print("log_var")
-# print(log_var)
-diff = np.exp(-1*np.sqrt(log_var))
-std = np.subtract(diff*mean_1, mean_1)
-# print("std")
-# print(std)
+diff = np.exp(-1 * np.sqrt(log_var))
+std = np.subtract(diff * mean_1, mean_1)
 var = pd.DataFrame()
 for i in range(0, std.size):
     scalar = std[i]
-    ds = std*scalar
+    ds = std * scalar
     var[recvTickers[i]] = ds
 
-# print("var")
-# print(var)
 corr = returns.corr()
+cov = corr * var
+mean = np.subtract(mean_1, 1)
 
-# print("corr")
-# print(corr)
-cov = corr*var
-
-# print("cov")
-# print(cov)
-mean = np.subtract(mean_1,1)
 
 def get_ret_vol_sr(weights):
     weights = np.array(weights)
-    # print("weights=", weights)
     ret = np.sum(mean * weights)
-    # print("ret=",ret)
     vol = np.sqrt(np.dot(weights.T, np.dot(cov, weights)))
-    # print("vol=",vol)
     sr = (ret - single_period_margin_rate) / vol
-    # print("sr=",sr)
     return np.array([ret, vol, sr])
 
 
@@ -121,13 +131,8 @@ def check_sum(weights):
     return np.sum(weights) - 1
 
 
-# Moving on, we will need to create a variable to include our constraints like the check_sum.
-# We’ll also define an initial guess and specific bounds, to help the minimization be faster and more efficient.
 # Our initial guess will be 25% for each stock (or 0.25), and the bounds will be a tuple (0,1) for each stock,
-# since the weight can range from 0 to 1.
-
 print("The number of stocks retrieved=", len(recvTickers))
-
 cons = ({'type': 'eq', 'fun': check_sum})
 bounds = [[0] * 2] * len(recvTickers)
 bounds[0][1] = 1
@@ -162,29 +167,8 @@ sr_ratio = sr_data[2]
 
 print("ret_percent=", ret_percent, "vol_percent=", vol_percent, "sr_ratio=", sr_ratio)
 
-#https://matplotlib.org/stable/gallery/pie_and_polar_charts/pie_and_donut_labels.html
-# fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
-#
-# data = df[0].values
-# labels = df[0].index
-#
-# wedges, texts, autotexts = ax.pie(data, autopct='%1.1f%%',
-#                                   textprops=dict(color="w"))
-#
-# ax.legend(wedges, labels,
-#           title="Ingredients",
-#           loc="center left",
-#           bbox_to_anchor=(1, 0, 0.5, 1))
-#
-# plt.setp(autotexts, size=8, weight="bold")
-#
-# plt.show()
-
-
 fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
-
 data = df[0].values
-
 wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=-40)
 
 bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
@@ -192,13 +176,13 @@ kw = dict(arrowprops=dict(arrowstyle="-"),
           bbox=bbox_props, zorder=0, va="center")
 
 for i, p in enumerate(wedges):
-    ang = (p.theta2 - p.theta1)/2. + p.theta1
+    ang = (p.theta2 - p.theta1) / 2. + p.theta1
     y = np.sin(np.deg2rad(ang))
     x = np.cos(np.deg2rad(ang))
     horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
     connectionstyle = "angle,angleA=0,angleB={}".format(ang)
     kw["arrowprops"].update({"connectionstyle": connectionstyle})
-    ax.annotate("{:.2%} {}".format(data[i],df[0].index[i]), xy=(x, y), xytext=(1.35*np.sign(x), 1.4*y),
+    ax.annotate("{:.2%} {}".format(data[i], df[0].index[i]), xy=(x, y), xytext=(1.35 * np.sign(x), 1.4 * y),
                 horizontalalignment=horizontalalignment, **kw)
 
 ax.set_title("Optimal Portfolio")

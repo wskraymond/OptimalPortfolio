@@ -46,7 +46,7 @@ else:
 print("single_period_margin_rate=", single_period_margin_rate)
 
 Closeprice = pd.DataFrame()
-US_benchmark = 'SPY'
+US_benchmark = 'VOO'
 QQQ_benchmark = 'QQQ'
 TW_benchmark = 'EWT'
 JP_benchmark = '1329.T'

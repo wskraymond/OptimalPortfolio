@@ -28,3 +28,4 @@ sklearn==0.0
 statsmodels==0.12.2
 threadpoolctl==2.1.0
 urllib3==1.25.10
+cassandra-driver~=3.25.0

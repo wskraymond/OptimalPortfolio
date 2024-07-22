@@ -70,6 +70,7 @@ class TestApp(EClient, EWrapper):
         return super().historicalDataEnd(reqId, start, end)
     def error(self, reqId: TickerId, errorCode: int, errorString: str, advancedOrderRejectJson=""):
         print(reqId, errorCode, errorString, advancedOrderRejectJson)
+
 app = TestApp()
 app.connect("127.0.0.1", port, 1)
 app.run()

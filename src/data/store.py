@@ -109,6 +109,7 @@ class Store:
             return q.filter(DailyPrice.date <= toDate).order_by('date')
 
 
+    #https://docs.datastax.com/en/developer/python-driver/3.24/index.html
     def select_daily_price_in_pd_by_range(self, ticker, fromDate, toDate, exclude=False):
         rows = self.select_daily_price_by_range(ticker,fromDate,toDate,exclude)
         tmp = pd.DataFrame.from_records([x.toMap() for x in rows])

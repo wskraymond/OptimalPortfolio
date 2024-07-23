@@ -10,18 +10,19 @@ import pandas_datareader as pdr
 
 apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
 Closeprice = pd.DataFrame()
-US_benchmark = 'SPY'
-HK_benchmark = '2800.HK'
-CN_benchmark = '159919.SZ'
-# tickers = ['BRK-B','LIT','ARKK','BIDU','DBC','REET','9988.HK', '0001.HK','2840.hk', US_benchmark , HK_benchmark, CN_benchmark]
-# tickers = ['BRK-B','LIT','ARKK','DBC','REET', 'NVDA', 'MSFT','AMZN', 'TSLA', 'JPM', US_benchmark]
-tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]
+US_benchmark = 'VOO'
+QQQ_benchmark = 'QQQ'
+Gold = 'GLD'
+BTC = 'IBIT'
+Bond = 'TLT'
+# tickers = ['BRK-B','LIT','MSFT','AMZN','DBC','TSLA', 'NVDA', US_benchmark]
+tickers = [US_benchmark, QQQ_benchmark, Gold, BTC, Bond]
 
 recvTickers=[]
 for i in tickers:
     try:
         print(i)
-        tmp = pdr.get_data_tiingo(symbols=i, start='1/1/2023', end=dt.date.today(), retry_count=5, api_key=apiToken)
+        tmp = pdr.get_data_tiingo(symbols=i, start='1/1/2010', end=dt.date.today(), retry_count=5, api_key=apiToken)
         tmp.reset_index('symbol', inplace=True, drop=True)
         Closeprice[i] = tmp['adjClose']
         recvTickers.append(i)

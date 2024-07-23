@@ -7,6 +7,11 @@ from scipy.optimize import minimize
 from argparse import ArgumentParser
 import math
 from pandas_datareader.data import DataReader as dr
+import traceback
+
+from src.data.contract.MyContract import contractList
+from src.data.store import Store
+from datetime import datetime
 
 parser = ArgumentParser(
     prog='PorfolioOptimizer',
@@ -15,11 +20,11 @@ parser.add_argument('--holdingPeriodYear', default='0.25', type=float)
 parser.add_argument(
     '--startdate',
     required=True,
-    help="e.g 'JAN-01-2010', '1/1/10', 'Jan, 1, 1980'"
+    help="'01/05/2015', '%d/%m/%Y'"
 )
 
 args = parser.parse_args()
-print("holdingPeriodYear=", args.holdingPeriodYear, "startdate=",args.startdate)
+print("holdingPeriodYear=", args.holdingPeriodYear, "startdate=", args.startdate)
 holdingPeriodYear = args.holdingPeriodYear
 
 syms = ['DGS30', 'DGS20', 'DGS10', 'DGS5', 'DGS2', 'DGS1', 'DGS1MO', 'DGS3MO']
@@ -46,53 +51,20 @@ else:
 print("single_period_margin_rate=", single_period_margin_rate)
 
 Closeprice = pd.DataFrame()
-US_benchmark = 'VOO'
-QQQ_benchmark = 'QQQ'
-TW_benchmark = 'EWT'
-JP_benchmark = '1329.T'
-HK_benchmark = '2800.HK'
-CN_benchmark = '159919.SZ'
-Gold = 'IAU'
-BTC = 'IBIT'
-
-# DJ Index
-# table=pd.read_html('https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average')
-# dj_df = table[1]
-# tickers = set(dj_df['Symbol'].to_list())
-# benchmarks = {US_benchmark}
-# tickers = tickers.union(benchmarks)
-# tickers = list(tickers)
-
-# S&P 500 stock
-sp_table = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-sp_df = sp_table[0]
-tickers = set(sp_df['Symbol'].to_list())
-benchmarks = {US_benchmark, QQQ_benchmark, JP_benchmark,TW_benchmark, HK_benchmark, CN_benchmark, Gold, BTC}
-tickers = tickers.union(benchmarks)
-tickers = list(tickers)
-
-# Nikkei 225 stock
-# nk_df=pd.read_csv("csv/nikkei_225_list.csv")
-# stockCode = filter(lambda str: str.isnumeric(), nk_df['Symbol'].to_list())
-# tickers = set([s + '.T' for s in stockCode])
-# benchmarks = {JP_benchmark}
-# tickers = tickers.union(benchmarks)
-# tickers = list(tickers)
-
-
-# use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
-apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
 recvTickers = []
-for i in tickers:
+store = Store(hosts=['127.0.0.1'], keyspace='store')
+for i in contractList:
     try:
-        print(i)
-        # representations (e.g., 'JAN-01-2010', '1/1/10', 'Jan, 1, 1980')
-        tmp = pdr.get_data_tiingo(symbols=i, start=args.startdate, end=dt.date.today(), retry_count=5, api_key=apiToken)
-        tmp.reset_index('symbol', inplace=True, drop=True)
-        Closeprice[i] = tmp['adjClose']
-        recvTickers.append(i)
-    except:
-        print("symbol=", i, " cannot be resolved")
+        print(i.symbol)
+        rows = store.select_daily_price_in_pd_by_range(ticker=i.symbol,
+                                                 fromDate=datetime.strptime(args.startdate, '%d/%m/%Y').date(),
+                                                 toDate=dt.date.today())
+        Closeprice[i.symbol] = rows['close']
+        recvTickers.append(i.symbol)
+    except Exception as error:
+        print("An error occurred:", error)
+        traceback.print_exc()
+        print("symbol=", i.symbol, " cannot be resolved")
 
 # calculate the log return
 # returns is a dataframe class

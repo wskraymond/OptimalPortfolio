@@ -18,6 +18,7 @@ class Currency(UserType):
     code = columns.Text()
     country = columns.Text()
 
+
 class DailyPrice(Model):
     __table_name__ = 'DailyPrice'
     # __options__ = {'compaction': {'class': 'SizeTieredCompactionStrategy',
@@ -37,3 +38,13 @@ class DailyPrice(Model):
     low = columns.Float()
     created_at = columns.DateTime()
     updated_at = columns.DateTime()
+
+    # Defining a function
+    def toMap(self):
+        return {
+            'ticker': self.ticker,
+            'date': self.date,
+            'close': self.close,
+            'high': self.high,
+            'low': self.low
+        }

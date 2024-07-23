@@ -16,7 +16,7 @@ from cassandra.cqlengine.management import sync_table, drop_table
 from cassandra.cqlengine.models import Model
 
 from src.data.model.daily_price import DailyPrice, Currency
-
+import pandas as pd
 
 class Store:
     def __init__(self, hosts, keyspace):
@@ -104,6 +104,13 @@ class Store:
         q = DailyPrice.objects.filter(ticker=ticker) \
             .filter(DailyPrice.date >= fromDate)
         if exclude:
-            return q.filter(DailyPrice.date < toDate)
+            return q.filter(DailyPrice.date < toDate).order_by('date')
         else:
-            return q.filter(DailyPrice.date <= toDate)
+            return q.filter(DailyPrice.date <= toDate).order_by('date')
+
+
+    def select_daily_price_in_pd_by_range(self, ticker, fromDate, toDate, exclude=False):
+        rows = self.select_daily_price_by_range(ticker,fromDate,toDate,exclude)
+        tmp = pd.DataFrame.from_records([x.toMap() for x in rows])
+        tmp.set_index('date', inplace=True, drop=True)
+        return tmp

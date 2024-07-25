@@ -3,6 +3,8 @@ import numpy as np
 import pandas_datareader as pdr
 import matplotlib.pyplot as plt
 import datetime as dt
+
+from pandas.core.window import Window
 from scipy.optimize import minimize
 from argparse import ArgumentParser
 import math
@@ -12,7 +14,7 @@ import traceback
 from src.data.contract.MyContract import contractList
 from src.data.store import Store
 from datetime import datetime
-
+from numpy.lib.stride_tricks import sliding_window_view
 
 class Stats():
     def __init__(self):
@@ -78,20 +80,58 @@ class Stats():
                 traceback.print_exc()
                 print("symbol=", i.symbol, " cannot be resolved")
 
-    def roll(self):
+    #window operation doc
+    #https://pandas.pydata.org/docs/reference/window.html
+
+    #rolling apply to specific function
+    #https://pandas.pydata.org/docs/user_guide/window.html#rolling-apply
+
+    #https://pandas.pydata.org/docs/user_guide/window.html#computing-rolling-pairwise-covariances-and-correlations
+    #rolling window operation
+
+    def rolling_return(self):
+        #Also known as rolling or moving window,
+        # the window slides across all dimensions of the array and extracts subsets of the array at all window positions.
+        # rolling = sliding_window_view(self.Closeprice, (int(self.no_of_days), no_columns))
+
         # calculate the log return
         # returns is a dataframe class
         returns = np.log(self.Closeprice / self.Closeprice.shift(1))
+        rolling_windows = returns.rolling(window=int(self.no_of_days))
+        # mean_1 = np.exp(rolling_windows.mean() * self.no_of_days)
+        # log_var = rolling_windows.var(skipna=True) * self.no_of_days
+        # diff = np.exp(-1 * np.sqrt(log_var))
+        # print("diff=", diff)
+        window_list = []
+        for window_df in rolling_windows:
+            tmp = window_df.dropna()
+            if len(tmp.index) == int(self.no_of_days):
+                window_list.append(tmp)
+        # print("returns=",window_list)
+        return window_list
 
-        mean_1 = np.exp(returns.mean() * self.no_of_days)
-        log_var = returns.var(skipna=True) * self.no_of_days
+class Allocation():
+    def __init__(self, stat:Stats):
+        self.endDate = None
+        self.stat = stat
+        self.corr = None
+        self.cov = None
+        self.mean = None
+        self.df = {}
+        self.sr_data = None
+
+    def roll(self, returns):
+        self.endDate = returns.iloc[-1].name
+        # print("endDate=", self.endDate)
+        mean_1 = np.exp(returns.mean() * self.stat.no_of_days)
+        log_var = returns.var(skipna=True) * self.stat.no_of_days
         diff = np.exp(-1 * np.sqrt(log_var))
         std = np.subtract(diff * mean_1, mean_1)
         var = pd.DataFrame()
         for i in range(0, std.size):
             scalar = std[i]
             ds = std * scalar
-            var[self.recvTickers[i]] = ds
+            var[self.stat.recvTickers[i]] = ds
 
         self.corr = returns.corr()
         self.cov = self.corr * var
@@ -102,7 +142,7 @@ class Stats():
             weights = np.array(weights)
             ret = np.sum(self.mean * weights)
             vol = np.sqrt(np.dot(weights.T, np.dot(self.cov, weights)))
-            sr = (ret - self.single_period_margin_rate) / vol
+            sr = (ret - self.stat.single_period_margin_rate) / vol
             return np.array([ret, vol, sr])
 
         return get_ret_vol_sr
@@ -127,14 +167,14 @@ class Stats():
 
     def optimize(self):
         # Our initial guess will be 25% for each stock (or 0.25), and the bounds will be a tuple (0,1) for each stock,
-        print("The number of stocks retrieved=", len(self.recvTickers))
+        # print("The number of stocks retrieved=", len(self.stat.recvTickers))
         cons = ({'type': 'eq', 'fun': self.gen_check_sum_func()})
-        bounds = [[0] * 2] * len(self.recvTickers)
+        bounds = [[0] * 2] * len(self.stat.recvTickers)
         bounds[0][1] = 1
-        equal_size = 1 / len(self.recvTickers)
-        print("equal_size=", equal_size)
-        init_guess = [equal_size] * len(self.recvTickers)
-        print("init_guess=", init_guess)
+        equal_size = 1 / len(self.stat.recvTickers)
+        # print("equal_size=", equal_size)
+        init_guess = [equal_size] * len(self.stat.recvTickers)
+        # print("init_guess=", init_guess)
 
         opt_result = minimize(self.gen_neg_sharpe_func(), init_guess, method='SLSQP', bounds=bounds, constraints=cons)
         # print(opt_result)
@@ -143,7 +183,7 @@ class Stats():
 
         self.df = {}
         j = 0
-        for i in stats.recvTickers:
+        for i in self.stat.recvTickers:
             self.df[i] = opt_result.x[j]
             j += 1
 
@@ -154,6 +194,7 @@ class Stats():
         # If we use our function get_ret_vol_sr we get the return, volatility, and sharpe ratio:
         self.sr_data = self.gen_ret_vol_sr_func()(opt_result.x)
 
+
     def get_result(self):
         return {
             'ret_percent': self.sr_data[0],
@@ -162,17 +203,36 @@ class Stats():
         }
 
     def get_allocation(self):
-        return self.df
+        return self.df.to_dict()[0]
 
+    def to_dict(self):
+        r = self.get_result()
+        a = self.get_allocation()
+        dict = {}
+        dict.update(r)
+        dict.update(a)
+        return dict
 
-stats = Stats()
-stats.load()
-stats.roll()
-stats.optimize()
-result = stats.get_result()
-print(result)
+if __name__ == "__main__":
+    stats = Stats()
+    stats.load()
+    rolling_return = stats.rolling_return()
+    # print("rolling_return=",rolling_return[1])
+    def rolling_optimize(ret):
+        alloc = Allocation(stats)
+        alloc.roll(ret)
+        alloc.optimize()
+        # print(alloc.get_result())
+        # print(alloc.get_allocation())
+        return alloc
 
-print(stats.get_allocation())
+    rolling_alloc = [ rolling_optimize(ret.dropna()) for ret in rolling_return if not ret.empty]
+    print(len(rolling_alloc))
+    alloc_ma = pd.DataFrame([alloc.to_dict() for alloc in rolling_alloc], index=[alloc.endDate for alloc in rolling_alloc])
+    print(alloc_ma)
+
+    alloc_ma.plot()
+    plt.show()
 
 # fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
 # wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=-40)

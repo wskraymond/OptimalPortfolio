@@ -16,11 +16,11 @@ from ibapi.wrapper import *
 # primary exchange is probably completely irrelevant.
 # (I say ‘probably’ because nothing ever seems to be certain in the realm of contracts!...)
 
-# AAPL = Contract()
-# AAPL.symbol = "AAPL"
-# AAPL.secType = "STK"
-# AAPL.exchange = "SMART"
-# AAPL.currency = "USD"
+AAPL = Contract()
+AAPL.symbol = "AAPL"
+AAPL.secType = "STK"
+AAPL.exchange = "SMART"
+AAPL.currency = "USD"
 
 VOO = Contract()
 VOO.symbol = "VOO"
@@ -57,4 +57,5 @@ contractList = [
     QQQ,
     BRK,
     GLD
+    # AAPL
 ]

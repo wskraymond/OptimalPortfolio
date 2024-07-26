@@ -79,13 +79,18 @@ for contract in contractList:
 print(reqId_contract_map)
 for id, contract in reqId_contract_map.items():
     print(id, " ", contract)
-    app.reqHistoricalData(
+    #https://interactivebrokers.github.io/tws-api/historical_bars.html
+    #https://interactivebrokers.github.io/tws-api/historical_bars.html#hd_what_to_show
+    # TRADES data is adjusted for splits, but not dividends.
+    # ADJUSTED_LAST data is adjusted for splits and dividends. Requires TWS 967+.
+
+app.reqHistoricalData(
         reqId=id,
         contract=contract,
         endDateTime="",
-        durationStr="20 Y",
+        durationStr="1 Y",
         barSizeSetting="1 day",
-        whatToShow="TRADES",
+        whatToShow="ADJUSTED_LAST",
         useRTH=0,
         formatDate=1,
         keepUpToDate=False,

@@ -43,7 +43,7 @@ class DailyPrice(Model):
     def toMap(self):
         return {
             'ticker': self.ticker,
-            'date': self.date,
+            'date': self.date.date(),  # convert from cassandra date to datetime.date
             'close': self.close,
             'high': self.high,
             'low': self.low

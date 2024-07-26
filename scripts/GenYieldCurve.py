@@ -1,3 +1,4 @@
+import pandas as pd
 from pandas_datareader.data import DataReader as dr
 import matplotlib.pyplot as plt
 import datetime as dt
@@ -8,6 +9,8 @@ names = dict(zip(syms, ['30yr', '20yr', '10yr', '5yr', '2yr', '1m', '3m']))
 yc = yc.rename(columns=names)
 yc = yc[['1m', '3m', '2yr', '5yr', '10yr', '20yr', '30yr']]
 
+yc.index = pd.to_datetime(yc.index)
+print(type(yc.index[0]))
 print(yc)
 
 yc.loc['2024-01-02'].plot(label='Jan 02, 2024', color='blue')

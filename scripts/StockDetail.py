@@ -3,9 +3,23 @@ import traceback
 import yfinance as yf
 
 try:
-    vti = yf.Ticker('BRK-B')  # Replace with your ETF ticker
-    print(vti.incomestmt)
-    # expense_ratio = vti.info['annualReportExpenseRatio']
+    cl = yf.Ticker('CL')
+    print(cl.incomestmt)
+    print(cl.get_dividends())
+    print(cl.info['dividendRate'])
+    print(cl.info['dividendYield'])
+    print(cl.info['exDividendDate'])
+    print(cl.info['payoutRatio'])
+    print(cl.info['lastDividendDate'])
+    print(cl.info['lastDividendValue'])
+    print(cl.info['returnOnEquity'])
+    print(cl.info['returnOnAssets'])
+
+    from yahooquery import Ticker
+    etf = Ticker('VNQ')
+    expense_ratio = etf.fund_profile['VNQ']['feesExpensesInvestment']['annualReportExpenseRatio']
+    print(expense_ratio)
+
 except Exception as error:
     print("An error occurred:", error)
     traceback.print_exc()

@@ -88,7 +88,7 @@ app.reqHistoricalData(
         reqId=id,
         contract=contract,
         endDateTime="",
-        durationStr="1 Y",
+        durationStr="30 Y",
         barSizeSetting="1 day",
         whatToShow="ADJUSTED_LAST",
         useRTH=0,

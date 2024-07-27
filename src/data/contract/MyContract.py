@@ -1,8 +1,6 @@
 from ibapi.client import *
 from ibapi.wrapper import *
 
-
-
 # To take the MSFT example, if you request contract details for MSFT without specifying the exchange
 # (ie just use symbol=”MSFT” and sectype=”STK”), you get 25 contracts returned. Two of them have exchange=”SMART”,
 # so if you want to SMART-route an order you have to supply something additional,
@@ -64,10 +62,39 @@ BND.secType = "STK"
 BND.exchange = "SMART"
 BND.currency = "USD"
 
+DBC = Contract()
+DBC.symbol = "DBC"
+DBC.secType = "STK"
+DBC.exchange = "SMART"
+DBC.currency = "USD"
+
+VNQ = Contract()
+VNQ.symbol = "VNQ"
+VNQ.secType = "STK"
+VNQ.exchange = "SMART"
+VNQ.currency = "USD"
+
+SPHD = Contract()
+SPHD.symbol = "SPHD"
+SPHD.secType = "STK"
+SPHD.exchange = "SMART"
+SPHD.currency = "USD"
+
+CL = Contract()
+CL.symbol = "CL"
+CL.secType = "STK"
+CL.exchange = "SMART"
+CL.currency = "USD"
+
 contractList = [
     VOO,
     QQQ,
     BRK,
-    GLD
-    # AAPL
+    GLD,
+    DBC,  # Commodities
+    ELT,  # Duration = 16
+    BND,  # Duration = 6
+    VNQ,  # REIT ETF
+    SPHD,  # Div ETF
+    CL    #Div Stock
 ]

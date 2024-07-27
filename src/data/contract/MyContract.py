@@ -52,6 +52,18 @@ BRK.secType = "STK"
 BRK.exchange = "SMART"
 BRK.currency = "USD"
 
+ELT = Contract()
+ELT.symbol = "ELT"
+ELT.secType = "STK"
+ELT.exchange = "SMART"
+ELT.currency = "USD"
+
+BND = Contract()
+BND.symbol = "BND"
+BND.secType = "STK"
+BND.exchange = "SMART"
+BND.currency = "USD"
+
 contractList = [
     VOO,
     QQQ,

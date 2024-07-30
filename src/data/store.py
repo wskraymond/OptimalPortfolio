@@ -42,7 +42,7 @@ class Store:
                                        updated_at=created_at)
 
     def batch_insert_daily_price(self, dailyprices, execute_on_exception=False):
-        with BatchQuery(execute_on_exception=execute_on_exception) as b:
+        with BatchQuery(execute_on_exception=execute_on_exception, timeout=None) as b:
             now = datetime.now()
             for dailyprice in dailyprices:
                 self.insert_daily_price(ticker=dailyprice.ticker,
@@ -58,7 +58,7 @@ class Store:
                                         )
 
     def batch_delete_daily_price(self, dailyprice_ranges, execute_on_exception=False):
-        with BatchQuery(execute_on_exception=execute_on_exception) as b:
+        with BatchQuery(execute_on_exception=execute_on_exception, timeout=None) as b:
             for dailyprice_range in dailyprice_ranges:
                 exclude = False
                 if hasattr(dailyprice_range, 'exclude'):
@@ -72,7 +72,7 @@ class Store:
                                         )
 
     def batch_update_daily_price(self, dailyprice_updates, execute_on_exception=False):
-        with BatchQuery(execute_on_exception=execute_on_exception) as b:
+        with BatchQuery(execute_on_exception=execute_on_exception, timeout=None) as b:
             now = datetime.now()
             for dailyprice_update in dailyprice_updates:
                 dailyprice_update.kwargs['updated_at'] = now

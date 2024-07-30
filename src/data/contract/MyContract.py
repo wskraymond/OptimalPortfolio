@@ -26,6 +26,12 @@ VOO.secType = "STK"
 VOO.exchange = "SMART"
 VOO.currency = "USD"
 
+SPY = Contract()
+SPY.symbol = "SPY"
+SPY.secType = "STK"
+SPY.exchange = "SMART"
+SPY.currency = "USD"
+
 QQQ = Contract()
 QQQ.symbol = "QQQ"
 QQQ.secType = "STK"
@@ -50,11 +56,11 @@ BRK.secType = "STK"
 BRK.exchange = "SMART"
 BRK.currency = "USD"
 
-ELT = Contract()
-ELT.symbol = "ELT"
-ELT.secType = "STK"
-ELT.exchange = "SMART"
-ELT.currency = "USD"
+TLT = Contract()
+TLT.symbol = "TLT"
+TLT.secType = "STK"
+TLT.exchange = "SMART"
+TLT.currency = "USD"
 
 BND = Contract()
 BND.symbol = "BND"
@@ -87,14 +93,16 @@ CL.exchange = "SMART"
 CL.currency = "USD"
 
 contractList = [
-    VOO,
+    # VOO,
     QQQ,
     BRK,
     GLD,
-    DBC,  # Commodities
-    ELT,  # Duration = 16
-    BND,  # Duration = 6
-    VNQ,  # REIT ETF
-    SPHD,  # Div ETF
-    CL    #Div Stock
+    # DBC,  # Commodities
+    # TLT,  # Duration = 16
+    # BND,  # Duration = 6
+    # VNQ,  # REIT ETF
+    # SPHD,  # Div ETF
+    AAPL,
+    CL,    #Div Stock
+    SPY
 ]

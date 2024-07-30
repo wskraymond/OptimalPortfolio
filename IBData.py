@@ -28,6 +28,7 @@ class TestApp(EClient, EWrapper):
     def __init__(self):
         EClient.__init__(self, self)
         self.data = {}
+        self.orderId = 0
 
     def nextValidId(self, orderId: OrderId):
         self.orderId = orderId
@@ -71,7 +72,7 @@ latch = CountDownLatch(len(contractList))
 app = TestApp()
 app.connect("127.0.0.1", port, 0)
 threading.Thread(target=app.run).start()
-time.sleep(1)
+time.sleep(3)
 
 for contract in contractList:
     reqId_contract_map[app.nextId()] = contract
@@ -79,18 +80,22 @@ for contract in contractList:
 print(reqId_contract_map)
 for id, contract in reqId_contract_map.items():
     print(id, " ", contract)
+    #https://interactivebrokers.github.io/tws-api/historical_bars.html
+    #https://interactivebrokers.github.io/tws-api/historical_bars.html#hd_what_to_show
+    # TRADES data is adjusted for splits, but not dividends.
+    # ADJUSTED_LAST data is adjusted for splits and dividends. Requires TWS 967+.
     app.reqHistoricalData(
-        reqId=id,
-        contract=contract,
-        endDateTime="",
-        durationStr="20 Y",
-        barSizeSetting="1 day",
-        whatToShow="TRADES",
-        useRTH=0,
-        formatDate=1,
-        keepUpToDate=False,
-        chartOptions=[],
-    )
+            reqId=id,
+            contract=contract,
+            endDateTime="",
+            durationStr="30 Y",
+            barSizeSetting="1 day",
+            whatToShow="ADJUSTED_LAST",
+            useRTH=0,
+            formatDate=1,
+            keepUpToDate=False,
+            chartOptions=[],
+        )
 
 latch.wait()
 print("count down complete")

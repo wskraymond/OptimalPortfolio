@@ -10,6 +10,14 @@ Steps
 ![alt text](doc/correlation.png?raw=true "Correlation.py")
 ![alt text](doc/yield_curve.png?raw=true "GenYieldCurve.py")
 
+Rolling Statistics
+1) py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 2
+![alt text](doc/2010_HPR_2_YR_alloc.png?raw=true "Allocation for Roll over 2 years from 2010")
+![alt text](doc/2010_HPR_2_YR_ratio.png?raw=true "Ratio for Roll over 2 years from 2010")
+2) py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 5
+![alt text](doc/2010_HPR_5_YR_alloc.png?raw=true "Allocation for Roll over 5 years from 2010")
+![alt text](doc/2010_HPR_5_YR_ratio.png?raw=true "Ratio for Roll over 5 years from 2010")
+
 
 
 ## virtual environment setup

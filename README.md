@@ -19,6 +19,40 @@ Rolling Statistics
 ![alt text](doc/2010_HPR_5_YR_ratio.png?raw=true "Ratio for Roll over 5 years from 2010")
 
 
+# Market Data subscription
+### Tiingo market data (limited usage)
+```python
+pdr.get_data_tiingo(symbols=i, start=args.startdate, end=dt.date.today(), retry_count=5, api_key=apiToken)
+```
+### Download the IB Python native API
+You can download the Python Native API by navigating to the Interactive Brokers website and by going to Technology – Trading APIs – Get API Software, or by following this link – http://interactivebrokers.github.io/
+
+Make sure to select API version 9.73 or higher as anything prior to that does not have the Python source files needed. Also, you should be using Python version 3.1 or higher.
+
+Run the downloaded msi file and go through the setup wizard. This will copy the required Python source files to your hard drive. Once completed, navigate over to the directory that you specified in the installer and drill down to this directory – /TWS API/source/pythonclient. In this folder, run the python3 setup.py install file to install the API as a package.
+
+Congratulations! You’ve now installed the IB API. Just to make sure it is installed correctly, go into your Python terminal and type in import ibapi. If no errors appear, the install was successful.
+
+The IB API installer will install a few files that enable compatibility with Excel and also make a registry change in the process. If you’re looking to avoid that, check out the instructions for setting up the API in Linux or on a Mac, the method works just as well for Windows.
+
+```python
+#https://interactivebrokers.github.io/tws-api/historical_bars.html
+#https://interactivebrokers.github.io/tws-api/historical_bars.html#hd_what_to_show
+# TRADES data is adjusted for splits, but not dividends.
+# ADJUSTED_LAST data is adjusted for splits and dividends. Requires TWS 967+.
+app.reqHistoricalData(
+      reqId=id,
+      contract=contract,
+      endDateTime="",
+      durationStr="30 Y",
+      barSizeSetting="1 day",
+      whatToShow="ADJUSTED_LAST",
+      useRTH=0,
+      formatDate=1,
+      keepUpToDate=False,
+      chartOptions=[],
+) 
+```
 
 ## virtual environment setup
 1. pip install virtualenv

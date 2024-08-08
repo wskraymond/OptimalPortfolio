@@ -16,6 +16,7 @@ import traceback
 from src.data.contract.MyContract import contractList
 from src.data.store import Store
 from datetime import datetime
+import mplcursors
 
 
 class Stats():
@@ -52,7 +53,7 @@ class Stats():
                 print("An error occurred:", error)
                 traceback.print_exc()
                 print("symbol=", i.symbol, " cannot be resolved")
-        #https://pandas.pydata.org/docs/user_guide/timeseries.html
+        # https://pandas.pydata.org/docs/user_guide/timeseries.html
         self.Closeprice.index = pd.to_datetime(self.Closeprice.index)
 
     def pre_return(self):
@@ -194,7 +195,7 @@ class Allocation():
             'ret_percent': self.sr_data[0],
             'vol_percent': self.sr_data[1],
             'sr_ratio': self.sr_data[2],
-            'margin_rate' : self.single_period_margin_rate
+            'margin_rate': self.single_period_margin_rate
         }
 
     def get_allocation(self):
@@ -237,11 +238,13 @@ if __name__ == "__main__":
     if args.cmd == 'o':
         rolling_return = stats.rolling_return_list()
 
+
         def rolling_optimize(ret):
             alloc = Allocation(stats, ret)
             alloc.preload()
             alloc.optimize()
             return alloc
+
 
         rolling_alloc = [rolling_optimize(ret.dropna()) for ret in rolling_return if not ret.empty]
         print(len(rolling_alloc))
@@ -259,11 +262,13 @@ if __name__ == "__main__":
     elif args.cmd == 'o_avg':
         rolling_return = stats.rolling_return_list()
 
+
         def rolling_optimize(ret):
             alloc = Allocation(stats, ret)
             alloc.preload()
             alloc.optimize()
             return alloc
+
 
         rolling_alloc = [rolling_optimize(ret.dropna()) for ret in rolling_return if not ret.empty]
         print(len(rolling_alloc))
@@ -272,8 +277,10 @@ if __name__ == "__main__":
         alloc_m = pd.DataFrame([alloc.get_allocation() for alloc in rolling_alloc],
                                index=[alloc.endDate for alloc in rolling_alloc])
 
-        alloc_mean = alloc_m.ewm(halflife=str(int(stats.no_of_days) / 2) + " days", times=alloc_m.index.get_level_values(0)).mean()
-        ratio_mean = ratio_m.ewm(halflife=str(int(stats.no_of_days) / 2) + " days", times=ratio_m.index.get_level_values(0)).mean()
+        alloc_mean = alloc_m.ewm(halflife=str(int(stats.no_of_days) / 2) + " days",
+                                 times=alloc_m.index.get_level_values(0)).mean()
+        ratio_mean = ratio_m.ewm(halflife=str(int(stats.no_of_days) / 2) + " days",
+                                 times=ratio_m.index.get_level_values(0)).mean()
 
         plt.figure(1)
         ratio_mean.plot()
@@ -287,10 +294,18 @@ if __name__ == "__main__":
         for a in corr_matrix.columns:
             for b in corr_matrix.columns:
                 if a != b:
-                    print(a,b)
+                    print(a, b)
                     y = corr_matrix.loc[(slice(None), a), b].dropna()
                     x = y.index.get_level_values(0).unique()
                     plt.plot(x, y, label=f"{a}-{b}")
+
+
+        def show_annotation(sel):
+            label = sel.artist.get_label()
+            sel.annotation.set_text(f"{label}")
+
+
+        mplcursors.cursor(hover=True).connect("add", show_annotation)
 
         plt.xlabel('Date')
         plt.ylabel('Correlation')
@@ -302,22 +317,17 @@ if __name__ == "__main__":
         corr_matrix = stats.rolling_corr()
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        # i = corr_matrix.index.get_level_values(0).unique().to_numpy()
-        # print(i)
         my_dict = {value: index for index, value in enumerate(corr_matrix.columns)}
-        import random
         for a in corr_matrix.columns:
             for b in corr_matrix.columns:
                 if a != b:
-                    print(a,b)
+                    print(a, b)
                     s = corr_matrix.loc[(slice(None), a), b].dropna()
                     y = s.to_numpy()
                     i = s.index.get_level_values(0).unique().astype(int).to_numpy()
                     z = np.full_like(s, my_dict[a])
-                    # xyz_combined = np.column_stack((i, y, z))
-                    # print(i[0],y,z)
-                    print(type(i[0]), type(y), type(z))
-                    print(len(i), len(y), len(z))
+                    # print(type(i[0]), type(y), type(z))
+                    # print(len(i), len(y), len(z))
                     ax.plot(z, i, y, label=f"{my_dict[a]}-{a}-{b}")
         ax.set_xlabel('stock')
         ax.set_ylabel('date')
@@ -326,11 +336,10 @@ if __name__ == "__main__":
         ax.legend()
         plt.show()
     elif args.cmd == 'ewm_corr_avg':
-        ret = stats.pre_return()
-        a = ret.dropna().corr()
+        ret = stats.returns
         # https://pandas.pydata.org/docs/reference/api/pandas.core.window.ewm.ExponentialMovingWindow.corr.html#pandas.core.window.ewm.ExponentialMovingWindow.corr
         # corr = ret.ewm(halflife=str(int(stats.no_of_days)/2) + " days", times=ret.index.get_level_values(0)).corr()
-        #Span corresponds to what is commonly called an “N-day EW moving average”.
+        # Span corresponds to what is commonly called an “N-day EW moving average”.
         corr = ret.ewm(span=int(stats.no_of_days)).corr()
         # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.mean.html
         corr_matrix = corr.groupby(level=1).mean()
@@ -342,4 +351,113 @@ if __name__ == "__main__":
         sns.heatmap(corr_matrix, annot=True, cmap="RdYlGn_r")
 
         plt.title("Mean of Exponential Weighted Moving Correlation")
+        plt.show()
+    elif args.cmd == 'beta':
+        betas = {}
+        US_benchmark = 'SPY'
+        HK_benchmark = '2800.HK'
+        CN_benchmark = '159919.SZ'
+        benchmarks = {US_benchmark}
+        from scipy import stats as ss
+
+        for i in stats.recvTickers:
+            betas[i] = {}
+            for j in benchmarks:
+                slope, intercept, r, p, std_err = ss.linregress(np.nan_to_num(stats.returns[j].values),
+                                                                np.nan_to_num(stats.returns[i].values))
+                betas[i][j] = slope
+
+        betas = pd.DataFrame(betas).transpose()
+        print("betas=", betas)
+
+    elif args.cmd == 'beta_avg':
+        US_benchmark = 'SPY'
+        # HK_benchmark = '2800.HK'
+        # CN_benchmark = '159919.SZ'
+        from scipy import stats as ss
+
+        rolling_return = stats.rolling_return_list()
+
+
+        def rolling_beta(ret):
+            betas = {}
+            for i in stats.recvTickers:
+                betas[i] = {}
+                slope, intercept, r, p, std_err = ss.linregress(np.nan_to_num(ret[US_benchmark].values),
+                                                                np.nan_to_num(ret[i].values))
+                betas[i] = slope
+
+            startDate = ret.iloc[0].name
+            endDate = ret.iloc[-1].name
+            # print("betas=", betas, startDate, endDate)
+            return startDate, endDate, betas
+
+
+        rolling_b = [rolling_beta(ret.dropna()) for ret in rolling_return if not ret.empty]
+        print(len(rolling_b))
+        betas_m = pd.DataFrame([betas for startDate, endDate, betas in rolling_b],
+                               index=[endDate for startDate, endDate, betas in rolling_b])
+
+        rolling_avg = betas_m.ewm(halflife=str(int(stats.no_of_days) / 2) + " days",
+                                  times=betas_m.index.get_level_values(0)).mean()
+
+        plt.figure(1)
+        rolling_avg.plot()
+
+        plt.show()
+        # betas.to_csv(r'ui/output/beta.csv', index=True, header=True)
+    elif args.cmd == 'var':
+        var = stats.returns.dropna().rolling(window=int(stats.no_of_days)).var()
+        plt.figure(0)
+        var.plot()
+        plt.show()
+    elif args.cmd == 'ewm_var':
+        var = stats.returns.ewm(span=int(stats.no_of_days)).var()
+        plt.figure(0)
+        var.plot()
+        plt.show()
+    elif args.cmd == 'std':
+        def roll_std(ret):
+            mean_1 = np.exp(ret.mean() * stats.no_of_days)
+            log_var = ret.var(skipna=True) * stats.no_of_days
+            diff = np.exp(-1 * np.sqrt(log_var))
+            std = np.subtract(diff * mean_1, mean_1)
+
+            startDate = ret.iloc[0].name
+            endDate = ret.iloc[-1].name
+            return startDate, endDate, std * -100
+
+
+        rolling_return = stats.rolling_return_list()
+        rolling_std = [roll_std(ret.dropna()) for ret in rolling_return if not ret.empty]
+        print(len(rolling_std))
+        # print(rolling_std)
+        std_m = pd.DataFrame([std for startDate, endDate, std in rolling_std],
+                               index=[endDate for startDate, endDate, std in rolling_std])
+        # print(ratio_m)
+        std_m.plot()
+        plt.show()
+
+    elif args.cmd == 'std_avg':
+        def roll_std(ret):
+            mean_1 = np.exp(ret.mean() * stats.no_of_days)
+            log_var = ret.var(skipna=True) * stats.no_of_days
+            diff = np.exp(-1 * np.sqrt(log_var))
+            std = np.subtract(diff * mean_1, mean_1)
+
+            startDate = ret.iloc[0].name
+            endDate = ret.iloc[-1].name
+            return startDate, endDate, std * -100
+
+
+        rolling_return = stats.rolling_return_list()
+        rolling_std = [roll_std(ret.dropna()) for ret in rolling_return if not ret.empty]
+        print(len(rolling_std))
+        # print(rolling_std)
+        std_m = pd.DataFrame([std for startDate, endDate, std in rolling_std],
+                             index=[endDate for startDate, endDate, std in rolling_std])
+        # print(ratio_m)
+        std_avg = std_m.ewm(halflife=str(int(stats.no_of_days) / 2) + " days",
+                   times=std_m.index.get_level_values(0)).mean()
+        std_avg.plot()
         plt.show()

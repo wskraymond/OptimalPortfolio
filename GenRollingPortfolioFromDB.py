@@ -224,7 +224,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--cmd',
         required=True,
-        help="'o for optimize', 'corr for correlation'"
+        help="'o for optimal', 'o_avg for rolling avg of optimal', 'c 'orr for rolling correlation', 'ewm_corr_avg for avg of rolling correlation in heap map', 'beta_avg' ,std_avg' "
     )
 
     args = parser.parse_args()

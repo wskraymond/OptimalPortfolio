@@ -1,23 +1,45 @@
 # Optimal Portfolio
 
-Steps
-1. read stock close price from data source
-2. generate risk and return data 
-3. do the analysis to find out the tangent portfolio
-4. excel read csv file input and your own position for portfolio management
+Features
+1. read stock adjusted close price from market data source ( IB Data Or Tiingo)
+2. risk and return 
+3. Tangent portfolio for optimization from N stocks
+4. Beta 
+5. Yield Curve
 
 ![alt text](doc/2023_spy_optimal.png?raw=true "GenPortfolio3.py")
 ![alt text](doc/correlation.png?raw=true "Correlation.py")
 ![alt text](doc/yield_curve.png?raw=true "GenYieldCurve.py")
 
 Rolling Statistics
-1) py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 2
-![alt text](doc/2010_HPR_2_YR_alloc.png?raw=true "Allocation for Roll over 2 years from 2010")
-![alt text](doc/2010_HPR_2_YR_ratio.png?raw=true "Ratio for Roll over 2 years from 2010")
-2) py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 5
-![alt text](doc/2010_HPR_5_YR_alloc.png?raw=true "Allocation for Roll over 5 years from 2010")
-![alt text](doc/2010_HPR_5_YR_ratio.png?raw=true "Ratio for Roll over 5 years from 2010")
+1) optimal portfolio rolling window over 5 years from 2010
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 5 --cmd o
+```
+![alt text](doc/2010_HPR_5_YR_alloc.png?raw=true "Allocation for roll over 5 years from 2010")
+![alt text](doc/2010_HPR_5_YR_ratio.png?raw=true "Ratio for roll over 5 years from 2010")
+2) Exponential Moving Average for optimal portfolio
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --holdingPeriodYear 5 --cmd o_avg
+```
+   ![alt text](doc/EMW_Allocation.png?raw=true "Allocation for roll over 5 years from 2005")
+   ![alt text](doc/EMW_Ratio.png?raw=true "Ratio for roll over 5 years from 2005")
+3) Rolling Correlation
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --holdingPeriodYear 5 --cmd corr_avg
+```
+![alt text](doc/rolling_corr.png?raw=true "Rolling Correlation over 5 years from 2005")
 
+4) Rolling Beta
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --holdingPeriodYear 5 --cmd beta_avg
+```
+![alt text](doc/rolling_beta.png?raw=true "Rolling Beta over 5 years from 2005")
+5) Rolling Risk
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --holdingPeriodYear 5 --cmd std_avg
+```
+![alt text](doc/rolling_std.png?raw=true "Rolling Risk over 5 years from 2005")
 
 # Market Data subscription
 ### Tiingo market data (limited usage)
@@ -54,6 +76,33 @@ app.reqHistoricalData(
 ) 
 ```
 
+## Load IB Data into cassandra database
+1. setup cassandra container in docker using cassandra_docker/cassandra.yml , and create keyspace
+```
+   -- Create a keyspace
+   CREATE KEYSPACE IF NOT EXISTS store WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : '1' };
+```
+2. start IB Gateway 10.19
+3. Run IBData.py
+```
+py IBData.py
+```
+4. check result using cqlsh in docker container
+```
+# cqlsh
+Connected to Test Cluster at 127.0.0.1:9042
+[cqlsh 6.1.0 | Cassandra 4.1.5 | CQL spec 3.4.6 | Native protocol v5]
+Use HELP for help.
+cqlsh> select * from store.DailyPrice;
+
+ ticker | date       | close | created_at                      | currency                        | high  | low   | name | updated_at                      | year
+--------+------------+-------+---------------------------------+---------------------------------+-------+-------+------+---------------------------------+------
+    DBC | 2024-07-30 | 22.04 | 2024-07-30 17:12:15.378000+0000 | {code: 'USD', country: 'SMART'} | 22.04 | 22.04 |  DBC | 2024-07-30 17:12:15.378000+0000 | 2024
+    DBC | 2024-07-29 | 22.14 | 2024-07-30 17:12:15.378000+0000 | {code: 'USD', country: 'SMART'} | 22.34 | 22.05 |  DBC | 2024-07-30 17:12:15.378000+0000 | 2024
+    DBC | 2024-07-26 | 22.24 | 2024-07-30 17:12:15.378000+0000 | {code: 'USD', country: 'SMART'} | 22.39 | 22.19 |  DBC | 2024-07-30 17:12:15.378000+0000 | 2024
+    DBC | 2024-07-25 | 22.47 | 2024-07-30 17:12:15.378000+0000 | {code: 'USD', country: 'SMART'} | 22.52 | 22.21 |  DBC | 2024-07-30 17:12:15.378000+0000 | 2024
+    DBC | 2024-07-24 | 22.38 | 2024-07-30 17:12:15.378000+0000 | {code: 'USD', country: 'SMART'} |  22.6 | 22.38 |  DBC | 2024-07-30 17:12:15.378000+0000 | 2024
+```
 ## virtual environment setup
 1. pip install virtualenv
 2. py -m venv myenv  #venv for python3 , env folder name: myenv

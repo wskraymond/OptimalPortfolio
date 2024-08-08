@@ -7,6 +7,7 @@ from scipy.optimize import minimize
 from argparse import ArgumentParser
 import math
 from pandas_datareader.data import DataReader as dr
+import traceback
 
 parser = ArgumentParser(
     prog='PorfolioOptimizer',
@@ -61,7 +62,6 @@ BTC = 'IBIT'
 # tickers = set(dj_df['Symbol'].to_list())
 # benchmarks = {US_benchmark}
 # tickers = tickers.union(benchmarks)
-# tickers = list(tickers)
 
 # S&P 500 stock
 sp_table = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
@@ -69,7 +69,7 @@ sp_df = sp_table[0]
 tickers = set(sp_df['Symbol'].to_list())
 benchmarks = {US_benchmark, QQQ_benchmark, JP_benchmark,TW_benchmark, HK_benchmark, CN_benchmark, Gold, BTC}
 tickers = tickers.union(benchmarks)
-tickers = list(tickers)
+
 
 # Nikkei 225 stock
 # nk_df=pd.read_csv("csv/nikkei_225_list.csv")
@@ -77,9 +77,8 @@ tickers = list(tickers)
 # tickers = set([s + '.T' for s in stockCode])
 # benchmarks = {JP_benchmark}
 # tickers = tickers.union(benchmarks)
-# tickers = list(tickers)
 
-
+tickers = list(tickers)
 # use pandas_datareader to get the close price data from tiingo finance giving the stock tickets and date
 apiToken = 'b6aa06a239545aa707fc32cf7ffa17f3d828380f'
 recvTickers = []
@@ -91,7 +90,9 @@ for i in tickers:
         tmp.reset_index('symbol', inplace=True, drop=True)
         Closeprice[i] = tmp['adjClose']
         recvTickers.append(i)
-    except:
+    except Exception as error:
+        print("An error occurred:", error)
+        traceback.print_exc()
         print("symbol=", i, " cannot be resolved")
 
 # calculate the log return

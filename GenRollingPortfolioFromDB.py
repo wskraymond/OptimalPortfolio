@@ -313,10 +313,10 @@ if __name__ == "__main__":
     stats.loadYC()
     stats.loadDailyPrice()
     stats.load_div_expense()
+    stats.after_tax()
     stats.pre_return()
     stats.pre_div_return()
     stats.pre_log_expense()
-    stats.after_tax()
 
     if args.cmd == 'div':
         print("mean \n", stats.returns)

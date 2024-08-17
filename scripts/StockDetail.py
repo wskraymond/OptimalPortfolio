@@ -2,6 +2,7 @@ import traceback
 
 import yfinance as yf
 
+
 try:
     cl = yf.Ticker('CL')
     print(cl.incomestmt)
@@ -16,9 +17,19 @@ try:
     print(cl.info['returnOnAssets'])
 
     from yahooquery import Ticker
-    etf = Ticker('VNQ')
-    expense_ratio = etf.fund_profile['VNQ']['feesExpensesInvestment']['annualReportExpenseRatio']
-    print(expense_ratio)
+
+    def get_expense_ratio(ticker, etf):
+        if ticker in etf.fund_profile and 'feesExpensesInvestment' in etf.fund_profile[ticker] and 'annualReportExpenseRatio' in etf.fund_profile[ticker]['feesExpensesInvestment']:
+            # Both columns exist
+            expense_ratio = etf.fund_profile[ticker]['feesExpensesInvestment']['annualReportExpenseRatio']
+        else:
+            # Either or both columns do not exist
+            expense_ratio = 0.0
+        return expense_ratio
+
+    etf = Ticker('SPY')
+    # expense_ratio = etf.fund_profile['APPL']['feesExpensesInvestment']['annualReportExpenseRatio']
+    print(get_expense_ratio('SPY',etf))
 
 except Exception as error:
     print("An error occurred:", error)

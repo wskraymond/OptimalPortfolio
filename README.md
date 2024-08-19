@@ -54,7 +54,6 @@ py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 1 --r
    ![alt text](doc/EMW_Allocation.png?raw=true "Allocation for roll over 5 years from 2005")
    ![alt text](doc/EMW_Ratio.png?raw=true "Ratio for roll over 5 years from 2005")
 
-
 ```
 py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 5 --rollingYr 10 --cmd o_avg
 ```
@@ -72,6 +71,7 @@ py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --rollingYr 5 --cmd corr
 py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --rollingYr 5 --cmd beta_avg
 ```
 ![alt text](doc/rolling_beta.png?raw=true "Rolling Beta over 5 years from 2010")
+
 5) Rolling Risk
 ```
 py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 0.25 --rollingYr 5 --cmd std_avg

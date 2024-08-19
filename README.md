@@ -1,6 +1,7 @@
 # Optimal Portfolio
 
 ## Features
+0. S&P Stock List
 1. Price Risk using stock adjusted close price from market data source ( IB Data Or Tiingo)
 2. Portolio Risk & Return and Sharpe Ratio 
 3. Tangent portfolio for optimization from N stocks

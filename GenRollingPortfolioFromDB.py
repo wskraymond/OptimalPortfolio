@@ -22,7 +22,7 @@ from yahooquery import Ticker
 
 
 class Stats():
-    def __init__(self, startdate, holdingPeriodYear, rollingYr,divTaxRate):
+    def __init__(self, startdate, holdingPeriodYear, rollingYr, divTaxRate):
         self.holdingPeriodYear = holdingPeriodYear
         self.no_of_days = 252 * self.holdingPeriodYear  # number of days for a quarter = 63
         self.fromDate = datetime.strptime(startdate, '%d/%m/%Y').date()
@@ -172,13 +172,17 @@ class Allocation():
             if self.stat.rollingYr == 0.25:
                 single_period_margin_rate = self.stat.yc.loc[date]['3m'] * self.stat.holdingPeriodYear / 100
             elif self.stat.rollingYr == 1:
-                single_period_margin_rate = math.pow(1 + self.stat.yc.loc[date]['1yr'] / 100, self.stat.holdingPeriodYear) - 1
+                single_period_margin_rate = math.pow(1 + self.stat.yc.loc[date]['1yr'] / 100,
+                                                     self.stat.holdingPeriodYear) - 1
             elif self.stat.rollingYr == 2:
-                single_period_margin_rate = math.pow(1 + self.stat.yc.loc[date]['2yr'] / 100, self.stat.holdingPeriodYear) - 1
+                single_period_margin_rate = math.pow(1 + self.stat.yc.loc[date]['2yr'] / 100,
+                                                     self.stat.holdingPeriodYear) - 1
             elif self.stat.rollingYr == 5:
-                single_period_margin_rate = math.pow(1 + self.stat.yc.loc[date]['5yr'] / 100, self.stat.holdingPeriodYear) - 1
+                single_period_margin_rate = math.pow(1 + self.stat.yc.loc[date]['5yr'] / 100,
+                                                     self.stat.holdingPeriodYear) - 1
             elif self.stat.rollingYr == 10:
-                single_period_margin_rate = math.pow(1 + self.stat.yc.loc[date]['10yr'] / 100, self.stat.holdingPeriodYear) - 1
+                single_period_margin_rate = math.pow(1 + self.stat.yc.loc[date]['10yr'] / 100,
+                                                     self.stat.holdingPeriodYear) - 1
             else:
                 raise Exception("unsupported rollingYr")
         except Exception as error:
@@ -195,7 +199,8 @@ class Allocation():
         # total return => captial gain + tax adjusted dividend gain - etf expense
         # total_HPR_1 = np.exp(self.returns.sum(axis=0) + self.div_return.sum(axis=0) + self.single_period_expense_series)
         # if window size == self.stat.no_of_days, then actually we don't need to calculate mean and multiply
-        total_HPR_1 = np.exp((self.returns.mean() + self.div_return.mean()) * self.stat.no_of_days + self.single_period_expense_series)
+        total_HPR_1 = np.exp(
+            (self.returns.mean() + self.div_return.mean()) * self.stat.no_of_days + self.single_period_expense_series)
         log_var = self.returns.var(skipna=True) * self.stat.no_of_days
         diff = np.exp(-1 * np.sqrt(log_var))
         std = np.subtract(diff * HPR_1, HPR_1)
@@ -306,7 +311,8 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    print("holdingPeriodYear=", args.holdingPeriodYear,"rollingYr=",args.rollingYr , "startdate=", args.startdate, "cmd=", args.cmd, "divTaxRate=",
+    print("holdingPeriodYear=", args.holdingPeriodYear, "rollingYr=", args.rollingYr, "startdate=", args.startdate,
+          "cmd=", args.cmd, "divTaxRate=",
           args.divTaxRate)
 
     stats = Stats(args.startdate, args.holdingPeriodYear, args.rollingYr, args.divTaxRate)
@@ -319,21 +325,37 @@ if __name__ == "__main__":
     stats.pre_log_expense()
 
     if args.cmd == 'div':
-        print("mean \n", stats.returns)
-        print("mean std \n", stats.returns.std())
-        print("div ret\n", stats.div_return)
-        print("div ret mean \n", stats.div_return.mean())
-        print("div ret std \n", stats.div_return.std())
-        print("expense \n", np.exp(stats.log_expense) * 100)
+        print("log mean \n", stats.returns.mean())
+        print("log mean std \n", stats.returns.std())
+        print("div log ret mean \n", stats.div_return.mean())
+        print("div log ret std \n", stats.div_return.std())
+        print("expense \n", (np.exp(stats.log_expense) - 1) * 100)
         plt.figure(0)
         stats.returns.plot()
         plt.title("log return")
+
         plt.figure(1)
-        stats.div.plot()
-        plt.title("div payment")
+        div = stats.div.groupby(stats.div.index.year).sum()
+        div.plot()
+        plt.title("tax adjusted div payment over year")
+
         plt.figure(2)
-        stats.div_return.plot()
-        plt.title("log div yield")
+        div_yield = (np.exp(stats.div_return.groupby(stats.div_return.index.year).sum()) - 1) * 100
+        div_yield.plot()
+        plt.title("tax adjusted div yield per year")
+
+        plt.figure(4)
+        div_yield_over_time = (div / stats.Closeprice.loc[stats.Closeprice.first_valid_index()]) * 100
+        for ticker in div_yield_over_time.columns:
+            div_line = div_yield_over_time[ticker]
+            close_price = stats.Closeprice.loc[stats.Closeprice.first_valid_index(), ticker]
+            date = stats.Closeprice[ticker].first_valid_index().date()
+            label = f"{ticker}@{close_price:.2f} on {date}"
+            div_line.plot(label=label)
+
+        plt.title("Tax-Adjusted Dividend Yield Over Years Since First Funding")
+        plt.legend()
+        plt.grid(True)
         plt.show()
     elif args.cmd == 'o':
         rolling_return = stats.rolling_return_list()
@@ -349,7 +371,6 @@ if __name__ == "__main__":
 
         rolling_alloc = [rolling_optimize(ret.dropna(), div.dropna()) for ret, div in
                          zip(rolling_return, rolling_div_return) if not ret.empty and not div.empty]
-        print(len(rolling_alloc))
         ratio_m = pd.DataFrame([alloc.get_result() for alloc in rolling_alloc],
                                index=[alloc.endDate for alloc in rolling_alloc])
         alloc_m = pd.DataFrame([alloc.get_allocation() for alloc in rolling_alloc],
@@ -357,8 +378,10 @@ if __name__ == "__main__":
 
         plt.figure(1)
         ratio_m.plot()
+        plt.title(f"Ratio - optimal portfolio with {int(stats.holdingPeriodYear)}Y HPR rolling over {int(stats.rollingYr)}Y window")
         plt.figure(2)
         alloc_m.plot()
+        plt.title(f"Alloc - optimal portfolio with {int(stats.holdingPeriodYear)}Y HPR rolling over {int(stats.rollingYr)}Y window")
 
         plt.show()
     elif args.cmd == 'o_avg':
@@ -375,13 +398,11 @@ if __name__ == "__main__":
 
         rolling_alloc = [rolling_optimize(ret.dropna(), div.dropna()) for ret, div in
                          zip(rolling_return, rolling_div_return) if not ret.empty and not div.empty]
-        print(len(rolling_alloc))
         ratio_m = pd.DataFrame([alloc.get_result() for alloc in rolling_alloc],
                                index=[alloc.endDate for alloc in rolling_alloc])
         alloc_m = pd.DataFrame([alloc.get_allocation() for alloc in rolling_alloc],
                                index=[alloc.endDate for alloc in rolling_alloc])
 
-        print(alloc_m)
         alloc_mean = alloc_m.ewm(halflife=str(int(stats.windowSize) / 2) + " days",
                                  times=alloc_m.index.get_level_values(0)).mean()
         ratio_mean = ratio_m.ewm(halflife=str(int(stats.windowSize) / 2) + " days",
@@ -389,9 +410,11 @@ if __name__ == "__main__":
 
         plt.figure(1)
         ratio_mean.plot()
+        plt.title(f"Ratio - optimal portfolio with {int(stats.holdingPeriodYear)}Y HPR rolling over {int(stats.rollingYr)}Y EMA")
         plt.figure(2)
         alloc_mean.plot()
-
+        plt.title(f"Alloc - optimal portfolio with {int(stats.holdingPeriodYear)}Y HPR rolling over {int(stats.rollingYr)}Y EMA")
+        plt.grid(True)
         plt.show()
     elif args.cmd == 'corr':
         corr_matrix = stats.rolling_corr()
@@ -401,7 +424,8 @@ if __name__ == "__main__":
                 if a != b:
                     print(a, b)
                     y = corr_matrix.loc[(slice(None), a), b].dropna()
-                    x = y.index.get_level_values(0).unique()
+                    x = y.index.get_level_values(0).unique().to_numpy()
+                    y = y.to_numpy()
                     plt.plot(x, y, label=f"{a}-{b}")
 
 
@@ -431,8 +455,6 @@ if __name__ == "__main__":
                     y = s.to_numpy()
                     i = s.index.get_level_values(0).unique().astype(int).to_numpy()
                     z = np.full_like(s, my_dict[a])
-                    # print(type(i[0]), type(y), type(z))
-                    # print(len(i), len(y), len(z))
                     ax.plot(z, i, y, label=f"{my_dict[a]}-{a}-{b}")
         ax.set_xlabel('stock')
         ax.set_ylabel('date')
@@ -448,8 +470,6 @@ if __name__ == "__main__":
         corr = ret.ewm(span=int(stats.windowSize)).corr()
         # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.mean.html
         corr_matrix = corr.groupby(level=1).mean()
-        # print(corr_matrix)
-        # corr_matrix.to_csv(r'ui/output/corr.csv', index=True, header=True)
 
         plt.figure(2, figsize=(13, 8))
         # cmap options: “RdYlGn_r”, “summer_r”, “Blues”, and “Greens”
@@ -460,8 +480,6 @@ if __name__ == "__main__":
     elif args.cmd == 'beta':
         betas = {}
         US_benchmark = 'SPY'
-        HK_benchmark = '2800.HK'
-        CN_benchmark = '159919.SZ'
         benchmarks = {US_benchmark}
         from scipy import stats as ss
 
@@ -477,8 +495,6 @@ if __name__ == "__main__":
 
     elif args.cmd == 'beta_avg':
         US_benchmark = 'SPY'
-        # HK_benchmark = '2800.HK'
-        # CN_benchmark = '159919.SZ'
         from scipy import stats as ss
 
         rolling_return = stats.rolling_return_list()
@@ -510,7 +526,6 @@ if __name__ == "__main__":
         rolling_avg.plot()
 
         plt.show()
-        # betas.to_csv(r'ui/output/beta.csv', index=True, header=True)
     elif args.cmd == 'var':
         var = stats.returns.dropna().rolling(window=int(stats.windowSize)).var() * stats.no_of_days
         plt.figure(0)
@@ -535,11 +550,8 @@ if __name__ == "__main__":
 
         rolling_return = stats.rolling_return_list()
         rolling_std = [roll_std(ret.dropna()) for ret in rolling_return if not ret.empty]
-        print(len(rolling_std))
-        # print(rolling_std)
         std_m = pd.DataFrame([std for startDate, endDate, std in rolling_std],
                              index=[endDate for startDate, endDate, std in rolling_std])
-        # print(ratio_m)
         std_m.plot()
         plt.show()
 
@@ -557,12 +569,11 @@ if __name__ == "__main__":
 
         rolling_return = stats.rolling_return_list()
         rolling_std = [roll_std(ret.dropna()) for ret in rolling_return if not ret.empty]
-        print(len(rolling_std))
-        # print(rolling_std)
         std_m = pd.DataFrame([std for startDate, endDate, std in rolling_std],
                              index=[endDate for startDate, endDate, std in rolling_std])
-        # print(ratio_m)
         std_avg = std_m.ewm(halflife=str(int(stats.windowSize) / 2) + " days",
                             times=std_m.index.get_level_values(0)).mean()
         std_avg.plot()
+        plt.grid(True)
+        plt.title(f"Rolling Risk in a {stats.holdingPeriodYear}-Y holding Period")
         plt.show()

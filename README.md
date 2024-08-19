@@ -1,17 +1,20 @@
 # Optimal Portfolio
 
-Features
-1. read stock adjusted close price from market data source ( IB Data Or Tiingo)
-2. risk and return 
+## Features
+1. Price Risk using stock adjusted close price from market data source ( IB Data Or Tiingo)
+2. Portolio Risk & Return and Sharpe Ratio 
 3. Tangent portfolio for optimization from N stocks
 4. Beta 
 5. Yield Curve
+6.  Tax Adjusted (Default: 30%) Dividend Return
+7.  ETF Expense Adjusted Return
+8.  Correlation Matrix
 
 ![alt text](doc/2023_spy_optimal.png?raw=true "GenPortfolio3.py")
 ![alt text](doc/correlation.png?raw=true "Correlation.py")
 ![alt text](doc/yield_curve.png?raw=true "GenYieldCurve.py")
 
-Rolling Statistics
+## Rolling Statistics
 ```
 (myenv) C:\Users\raymond\Desktop\MyPortfolio>py GenRollingPortfolioFromDB.py --h
 usage: PorfolioOptimizer [-h] [--holdingPeriodYear HOLDINGPERIODYEAR] [--rollingYr ROLLINGYR] --startdate STARTDATE --cmd CMD [--divTaxRate DIVTAXRATE]
@@ -68,7 +71,7 @@ py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 1 --r
 ```
 ![alt text](doc/rolling_std_1.png?raw=true "Rolling Risk over 5 years from 2010")
 
-# Market Data subscription
+## Market Data subscription
 ### Tiingo market data (limited usage)
 ```python
 pdr.get_data_tiingo(symbols=i, start=args.startdate, end=dt.date.today(), retry_count=5, api_key=apiToken)

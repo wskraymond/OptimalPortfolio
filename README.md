@@ -20,6 +20,18 @@
 usage: PorfolioOptimizer [-h] [--holdingPeriodYear HOLDINGPERIODYEAR] [--rollingYr ROLLINGYR] --startdate STARTDATE --cmd CMD [--divTaxRate DIVTAXRATE]
 
 ```
+
+```python
+# stock list used in sample below
+[
+    QQQ,
+    BRK,
+    GLD,
+    AAPL,
+    CL,
+    SPY
+]
+```
 0) Dividend statistics
 ```
 py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --cmd div

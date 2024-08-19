@@ -52,7 +52,7 @@ sum_corr = df.corr().sum().sort_values(ascending=True).index.values
 
 corr_matrix = df[sum_corr].corr()
 print("corr_matrix=", corr_matrix)
-corr_matrix.to_csv(r'ui/output/corr.csv', index=True, header=True)
+corr_matrix.to_csv(r'sheet/output/corr.csv', index=True, header=True)
 
 plt.figure(figsize=(13, 8))
 # cmap options: “RdYlGn_r”, “summer_r”, “Blues”, and “Greens”

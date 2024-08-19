@@ -12,34 +12,61 @@ Features
 ![alt text](doc/yield_curve.png?raw=true "GenYieldCurve.py")
 
 Rolling Statistics
-1) optimal portfolio rolling window over 5 years from 2010
 ```
-py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 5 --cmd o
+(myenv) C:\Users\raymond\Desktop\MyPortfolio>py GenRollingPortfolioFromDB.py --h
+usage: PorfolioOptimizer [-h] [--holdingPeriodYear HOLDINGPERIODYEAR] [--rollingYr ROLLINGYR] --startdate STARTDATE --cmd CMD [--divTaxRate DIVTAXRATE]
+
 ```
-![alt text](doc/2010_HPR_5_YR_alloc.png?raw=true "Allocation for roll over 5 years from 2010")
-![alt text](doc/2010_HPR_5_YR_ratio.png?raw=true "Ratio for roll over 5 years from 2010")
+0) Dividend statistics
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --cmd div
+```
+
+![alt text](doc/log_return.png?raw=true "cmd=div")
+![alt text](doc/tax_adj_div_over_year.png?raw=true "cmd=div")
+![alt text](doc/tax_adj_div_yield_per_year.png?raw=true "cmd=div")
+![alt text](doc/tax_adj_div_yield_since_funding.png?raw=true "cmd=div")
+
+1) optimal portfolio rolling window
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 1 --rollingYr 5 --cmd o
+```
+
 2) Exponential Moving Average for optimal portfolio
 ```
-py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --holdingPeriodYear 5 --cmd o_avg
+py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 1 --rollingYr 5 --cmd o_avg
 ```
    ![alt text](doc/EMW_Allocation.png?raw=true "Allocation for roll over 5 years from 2005")
    ![alt text](doc/EMW_Ratio.png?raw=true "Ratio for roll over 5 years from 2005")
+
+
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 5 --rollingYr 10 --cmd o_avg
+```
+![alt text](doc/EMW_Allocation_5.png?raw=true "Allocation for roll over 10 years from 2005")
+![alt text](doc/EMW_Ratio_5.png?raw=true "Ratio for roll over 10 years from 2005")
+
 3) Rolling Correlation
 ```
-py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --holdingPeriodYear 5 --cmd corr_avg
+py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --rollingYr 5 --cmd corr
 ```
-![alt text](doc/rolling_corr.png?raw=true "Rolling Correlation over 5 years from 2005")
+![alt text](doc/rolling_corr.png?raw=true "Rolling Correlation over 5 years from 2010")
 
 4) Rolling Beta
 ```
-py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --holdingPeriodYear 5 --cmd beta_avg
+py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --rollingYr 5 --cmd beta_avg
 ```
-![alt text](doc/rolling_beta.png?raw=true "Rolling Beta over 5 years from 2005")
+![alt text](doc/rolling_beta.png?raw=true "Rolling Beta over 5 years from 2010")
 5) Rolling Risk
 ```
-py GenRollingPortfolioFromDB.py --startdate 01/01/2005 --holdingPeriodYear 5 --cmd std_avg
+py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 0.25 --rollingYr 5 --cmd std_avg
 ```
-![alt text](doc/rolling_std.png?raw=true "Rolling Risk over 5 years from 2005")
+![alt text](doc/rolling_std_0_25.png?raw=true "Rolling Risk over 5 years from 2010")
+
+```
+py GenRollingPortfolioFromDB.py --startdate 01/01/2010 --holdingPeriodYear 1 --rollingYr 5 --cmd std_avg
+```
+![alt text](doc/rolling_std_1.png?raw=true "Rolling Risk over 5 years from 2010")
 
 # Market Data subscription
 ### Tiingo market data (limited usage)

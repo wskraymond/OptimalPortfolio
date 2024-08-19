@@ -49,7 +49,7 @@ for i in recvTickers:
 betas = pd.DataFrame(betas).transpose()
 print("betas=", betas)
 
-betas.to_csv(r'ui/output/beta.csv', index=True, header=True)
+betas.to_csv(r'sheet/output/beta.csv', index=True, header=True)
 
 size = len(recvTickers)
 
@@ -61,7 +61,7 @@ ret_arr = returns.mean()
 ret_arr = pd.DataFrame(ret_arr)
 print("ret_arr=", ret_arr)
 
-ret_arr.to_csv(r'ui/output/log_daily_return.csv', index=True, header=True)
+ret_arr.to_csv(r'sheet/output/log_daily_return.csv', index=True, header=True)
 
 # Expected volatility
 # percent : exp(-x) != exp(+x) ???
@@ -72,4 +72,4 @@ vol_arr = returns.var()
 vol_arr = pd.DataFrame(vol_arr)
 print("vol_arr=", vol_arr)
 
-vol_arr.to_csv(r'ui/output/log_daily_var.csv', index=True, header=True)
+vol_arr.to_csv(r'sheet/output/log_daily_var.csv', index=True, header=True)

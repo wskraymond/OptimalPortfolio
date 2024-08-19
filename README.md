@@ -6,9 +6,9 @@
 3. Tangent portfolio for optimization from N stocks
 4. Beta 
 5. Yield Curve
-6.  Tax Adjusted (Default: 30%) Dividend Return
-7.  ETF Expense Adjusted Return
-8.  Correlation Matrix
+6. Tax Adjusted (Default: 30%) Dividend
+7. ETF Expense Ratio
+8. Correlation Matrix
 
 ![alt text](doc/2023_spy_optimal.png?raw=true "GenPortfolio3.py")
 ![alt text](doc/correlation.png?raw=true "Correlation.py")

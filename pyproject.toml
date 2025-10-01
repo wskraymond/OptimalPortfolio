@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "PYDSA"
+version = "0.0.1"
+description = "Python DSA"
+authors = ["Raymond"]
+packages = [
+    { include = "py_dsa" },
+]
+readme = "README.md"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10, <=3.13"
+
+
+[tool.poetry.scripts]
+test = 'cmd_scripts:test'
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+
+[build-system]
+requires = ["setuptools<65.5.0", "poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

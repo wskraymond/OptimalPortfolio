@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 import math
 from pandas_datareader.data import DataReader as dr
 import traceback
+import requests
 
 parser = ArgumentParser(
     prog='PorfolioOptimizer',
@@ -64,7 +65,13 @@ BTC = 'IBIT'
 # tickers = tickers.union(benchmarks)
 
 # S&P 500 stock
-sp_table = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+}
+url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+response = requests.get(url, headers=headers)
+response.raise_for_status()  # Raise an error for HTTP issues
+sp_table = pd.read_html(response.text)
 sp_df = sp_table[0]
 tickers = set(sp_df['Symbol'].to_list())
 benchmarks = {US_benchmark, QQQ_benchmark, JP_benchmark,TW_benchmark, HK_benchmark, CN_benchmark, Gold, BTC}

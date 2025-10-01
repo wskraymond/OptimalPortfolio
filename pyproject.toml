@@ -1,11 +1,8 @@
 [tool.poetry]
-name = "PYDSA"
+name = "OPTIMAL_PORTFOLIO"
 version = "0.0.1"
-description = "Python DSA"
+description = "Optimal Portfolio"
 authors = ["Raymond"]
-packages = [
-    { include = "py_dsa" },
-]
 readme = "README.md"
 classifiers = [
     "Intended Audience :: Developers",

@@ -36,6 +36,11 @@
 		}
 	},
 
+	"runArgs": [
+    "-e", "DISPLAY=host.docker.internal:0",
+    "-v", "/tmp/.X11-unix:/tmp/.X11-unix"
+	],
+
 	// "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" ],
 
 	"postCreateCommand": "poetry run pip install --upgrade pip setuptools wheel && poetry install",

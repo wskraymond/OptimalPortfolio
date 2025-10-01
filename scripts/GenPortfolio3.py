@@ -164,7 +164,7 @@ for i in recvTickers:
 
 df = pd.DataFrame(df, index=[0]).transpose()
 print(df)
-df.to_csv(r'sheet/output/optimal.csv', index=True, header=True)
+#df.to_csv(r'sheet/output/optimal.csv', index=True, header=True)
 
 # We want the key x from the dictionary, which is an array with the weights of the portfolio that has the maximum Sharpe ratio.
 # If we use our function get_ret_vol_sr we get the return, volatility, and sharpe ratio:

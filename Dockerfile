@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     libssl-dev \
     zlib1g-dev \
+    x11-apps \
     libbz2-dev \
     libreadline-dev \
     libsqlite3-dev \

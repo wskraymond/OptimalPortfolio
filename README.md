@@ -15,6 +15,8 @@
 ![alt text](doc/correlation.png?raw=true "Correlation.py")
 ![alt text](doc/yield_curve.png?raw=true "GenYieldCurve.py")
 
+Notes; xhost + 127.0.0.1 //Run the following command on your Mac to allow Docker to connect to the XQuartz server:
+
 ## Rolling Statistics
 ```
 (myenv) C:\Users\raymond\Desktop\MyPortfolio>py GenRollingPortfolioFromDB.py --h

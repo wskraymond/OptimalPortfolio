@@ -9,6 +9,7 @@ import math
 from pandas_datareader.data import DataReader as dr
 import traceback
 import requests
+import matplotlib
 
 parser = ArgumentParser(
     prog='PorfolioOptimizer',
@@ -196,3 +197,4 @@ for i, p in enumerate(wedges):
 ax.set_title("Optimal Portfolio")
 
 plt.show()
+plt.savefig('optimal_portfolio.png')

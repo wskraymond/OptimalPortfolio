@@ -20,6 +20,8 @@ import mplcursors
 import yfinance as yf
 from yahooquery import Ticker
 
+store_host = 'host.docker.internal'
+
 
 class Stats():
     def __init__(self, startdate, holdingPeriodYear, rollingYr, divTaxRate):
@@ -59,7 +61,7 @@ class Stats():
         return expense_ratio
 
     def loadDailyPrice(self):
-        store = Store(hosts=['127.0.0.1'], keyspace='store')
+        store = Store(hosts=[store_host], keyspace='store')
         for i in contractList:
             try:
                 print(i.symbol)

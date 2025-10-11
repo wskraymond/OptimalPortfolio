@@ -10,7 +10,14 @@ import time
 import threading
 import collections
 
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
+
+
+print("IB Data starts")
 port = 4001
+ib_host = 'host.docker.internal'
+store_host = 'host.docker.internal'
 
 DailyPriceData = collections.namedtuple('DailyPriceData', ['ticker',
                                                            'date',
@@ -37,8 +44,12 @@ class TestApp(EClient, EWrapper):
         self.orderId += 1
         return self.orderId
 
-    def error(self, reqId, errorCode, errorString, advancedOrderReject):
-        print(f"reqId: {reqId}, errorCode: {errorCode}, errorString: {errorString}, orderReject: {advancedOrderReject}")
+    def error(self, reqId, errorCode, errorString,
+              advancedOrderReject=None, errorTime=None):
+        print(f"reqId: {reqId}, errorCode: {errorCode}, "
+              f"errorString: {errorString}, "
+              f"orderReject: {advancedOrderReject}, "
+              f"errorTime: {errorTime}")
 
     def historicalData(self, reqId: int, bar: BarData):
         print(reqId, bar)
@@ -59,7 +70,7 @@ class TestApp(EClient, EWrapper):
         print(f"Historical Data Ended for {reqId}. Started at {start}, ending at {end}")
         # print(self.data)
 
-        store = Store(hosts=['127.0.0.1'], keyspace='store')
+        store = Store(hosts=[store_host], keyspace='store')
         store.batch_insert_daily_price(self.data[reqId])
         latch.count_down()
         return super().historicalDataEnd(reqId, start, end)
@@ -70,8 +81,9 @@ class TestApp(EClient, EWrapper):
 
 latch = CountDownLatch(len(contractList))
 app = TestApp()
-app.connect("127.0.0.1", port, 0)
-threading.Thread(target=app.run).start()
+app.connect(ib_host, port, clientId=1)
+threading.Thread(target=app.run, daemon=True).start()
+
 time.sleep(3)
 
 for contract in contractList:

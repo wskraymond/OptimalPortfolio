@@ -21,6 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     liblapack-dev \
     libatlas-base-dev \
     python3-distutils \
+    python3-dev \ 
+    libxml2-dev \
+    libxslt-dev \
     docker.io
 
 # Clean up to reduce image size
@@ -58,6 +61,11 @@ RUN curl -sSL https://install.python-poetry.org | python3 -
 
 # Add Poetry to PATH
 ENV PATH="/home/$USERNAME/.local/bin:$PATH"
+
+# Install the API package using setup.py
+WORKDIR /workspaces/OptimalPortfolio/twsapi_macunix/IBJts/source/pythonclient
+RUN poetry run python setup.py install
+RUN poetry config virtualenvs.in-project true
 
 # Set the default shell to bash
 ENV SHELL /bin/bash

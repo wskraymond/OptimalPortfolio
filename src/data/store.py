@@ -152,29 +152,14 @@ class Store:
                 )
 
     
-    def select_portfolio_by_account(self, account_id):
-        return Portfolio.objects.filter(account_id=account_id)
+    def select_portfolio(self):
+        return Portfolio.objects()
 
-    def select_portfolio_in_pd_by_account(self, account_id):
-        rows = self.select_portfolio_by_account(account_id)
+    def select_portfolio_in_pd(self):
+        rows = self.select_portfolio()
         tmp = pd.DataFrame.from_records([x.toMap() for x in rows])
         tmp.set_index('ticker', inplace=True, drop=True)
         return tmp
-    
-
-    def select_first_portfolio(self):
-        row = Portfolio.objects().first()
-        if row:
-            return row.toMap()
-        return None
-
-    def select_first_portfolio_in_pd(self):
-        row = Portfolio.objects().first()
-        if row:
-            df = pd.DataFrame([row.toMap()])
-            df.set_index('ticker', inplace=True, drop=True)
-            return df
-        return pd.DataFrame()  # Return empty DataFrame if no data found
 
 
 

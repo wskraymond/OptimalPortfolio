@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 import numpy as np
 import pandas_datareader as pdr
@@ -19,9 +20,17 @@ from datetime import datetime
 import mplcursors
 import yfinance as yf
 from yahooquery import Ticker
+from ibapi.contract import Contract
 
 store_host = 'host.docker.internal'
 
+# Create contract from portfolio row
+def create_contract_from_portfolio_row(row):
+    contract = Contract()
+    contract.symbol = row.name  # 'ticker' is set as index in DataFrame
+    contract.secType = "STK"
+    contract.currency = row['currency']['code']
+    return contract
 
 class Stats():
     def __init__(self, startdate, holdingPeriodYear, rollingYr, divTaxRate):
@@ -39,6 +48,17 @@ class Stats():
         self.divTaxRate = divTaxRate
         self.rollingYr = rollingYr
         self.windowSize = 252 * rollingYr
+        self.store = Store(hosts=[store_host], keyspace='store')
+        # Append first portfolio contract to global list
+        global contractList
+        portfolio_list = self.store.select_portfolio_in_pd()
+        if not portfolio_list.empty:
+            for _, row in portfolio_list.iterrows():
+                contract = create_contract_from_portfolio_row(row)
+                contractList.append(contract)
+
+
+        print("contractList=", contractList)
 
     def loadYC(self):
         syms = ['DGS30', 'DGS20', 'DGS10', 'DGS5', 'DGS2', 'DGS1', 'DGS1MO', 'DGS3MO']
@@ -50,7 +70,7 @@ class Stats():
         # print(yc)
         self.yc = yc
 
-    def get_expense_ratio(self, ticker, etf):
+    """ def get_expense_ratio(self, ticker, etf):
         if ticker in etf.fund_profile and 'feesExpensesInvestment' in etf.fund_profile[
             ticker] and 'annualReportExpenseRatio' in etf.fund_profile[ticker]['feesExpensesInvestment']:
             # Both columns exist
@@ -58,14 +78,21 @@ class Stats():
         else:
             # Either or both columns do not exist
             expense_ratio = 0.0
-        return expense_ratio
+        return expense_ratio """
+    
+    def get_expense_ratio(self, ticker, etf):
+        try:
+            return etf.fund_profile[ticker]['feesExpensesInvestment']['annualReportExpenseRatio']
+        except (KeyError, TypeError):
+            return 0.0
+
 
     def loadDailyPrice(self):
-        store = Store(hosts=[store_host], keyspace='store')
+        global contractList
         for i in contractList:
             try:
                 print(i.symbol)
-                rows = store.select_daily_price_in_pd_by_range(ticker=i.symbol,
+                rows = self.store.select_daily_price_in_pd_by_range(ticker=i.symbol,
                                                                fromDate=self.fromDate,
                                                                toDate=dt.date.today())
                 self.Closeprice[i.symbol] = rows['close']
@@ -77,7 +104,7 @@ class Stats():
         # https://pandas.pydata.org/docs/user_guide/timeseries.html
         self.Closeprice.index = pd.to_datetime(self.Closeprice.index).tz_localize(None)
 
-    def load_div_expense(self):
+    """ def load_div_expense(self):
         self.div = pd.DataFrame(index=self.Closeprice.index)
         for i in contractList:
             try:
@@ -89,13 +116,51 @@ class Stats():
                 self.div[i.symbol] = div
                 etf = Ticker(i.symbol)
                 self.expense_ratio.loc[i.symbol] = self.get_expense_ratio(i.symbol, etf)
+                time.sleep(3)  # to avoid being rate limited by yahoo
             except Exception as error:
                 print("An error occurred:", error)
                 traceback.print_exc()
                 print("symbol=", i.symbol, " cannot be resolved")
         # https://pandas.pydata.org/docs/user_guide/timeseries.html
         self.div = self.div[pd.to_datetime(self.fromDate) <= self.div.index]
+        self.div = self.div.fillna(0.0) """
+
+    def safe_get_dividends(self, symbol, retries=3, delay=2):
+        for attempt in range(retries):
+            try:
+                div = yf.Ticker(symbol).get_dividends()
+                if not div.empty:
+                    div.index = div.index.tz_localize(None)
+                return div
+            except Exception as e:
+                print(f"Retry {attempt+1} for {symbol}: {e}")
+                time.sleep(delay)
+                delay *= 2
+        return pd.Series()
+
+
+    def load_div_expense(self):
+        global contractList
+        self.div = pd.DataFrame(index=self.Closeprice.index)
+        symbols = [i.symbol for i in contractList]
+        print("Fetching expense ratios for symbols:", symbols)
+        etfs = Ticker(" ".join(symbols))
+
+        for i in contractList:
+            try:
+                print(f"Processing {i.symbol}")
+                div = self.safe_get_dividends(i.symbol)
+                self.div[i.symbol] = div
+                self.expense_ratio.loc[i.symbol] = self.get_expense_ratio(i.symbol, etfs)
+                time.sleep(1)
+            except Exception as error:
+                print("An error occurred:", error)
+                traceback.print_exc()
+                print("symbol=", i.symbol, " cannot be resolved")
+
+        self.div = self.div[self.div.index >= pd.to_datetime(self.fromDate)]
         self.div = self.div.fillna(0.0)
+
 
     def pre_return(self):
         # calculate the log return
@@ -359,6 +424,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.show()
+        plt.savefig('div.png')
     elif args.cmd == 'o':
         rolling_return = stats.rolling_return_list()
         rolling_div_return = stats.rolling_div_return_list()
@@ -386,6 +452,7 @@ if __name__ == "__main__":
         plt.title(f"Alloc - optimal portfolio with {int(stats.holdingPeriodYear)}Y HPR rolling over {int(stats.rollingYr)}Y window")
 
         plt.show()
+        plt.savefig('o.png')
     elif args.cmd == 'o_avg':
         rolling_return = stats.rolling_return_list()
         rolling_div_return = stats.rolling_div_return_list()
@@ -418,6 +485,7 @@ if __name__ == "__main__":
         plt.title(f"Alloc - optimal portfolio with {int(stats.holdingPeriodYear)}Y HPR rolling over {int(stats.rollingYr)}Y EMA")
         plt.grid(True)
         plt.show()
+        plt.savefig('o_avg.png')
     elif args.cmd == 'corr':
         corr_matrix = stats.rolling_corr()
         plt.figure(figsize=(10, 6))
@@ -464,6 +532,7 @@ if __name__ == "__main__":
         ax.set_title('3D Rolling Correlation Between Stocks')
         ax.legend()
         plt.show()
+        plt.savefig('corr_3d.png')
     elif args.cmd == 'ewm_corr_avg':
         ret = stats.returns
         # https://pandas.pydata.org/docs/reference/api/pandas.core.window.ewm.ExponentialMovingWindow.corr.html#pandas.core.window.ewm.ExponentialMovingWindow.corr
@@ -479,6 +548,7 @@ if __name__ == "__main__":
 
         plt.title("Mean of Exponential Weighted Moving Correlation")
         plt.show()
+        plt.savefig('ewm_corr_avg.png')
     elif args.cmd == 'beta':
         betas = {}
         US_benchmark = 'SPY'
@@ -528,16 +598,19 @@ if __name__ == "__main__":
         rolling_avg.plot()
 
         plt.show()
+        plt.savefig('beta_avg.png')
     elif args.cmd == 'var':
         var = stats.returns.dropna().rolling(window=int(stats.windowSize)).var() * stats.no_of_days
         plt.figure(0)
         var.plot()
         plt.show()
+        plt.savefig('var.png')
     elif args.cmd == 'ewm_var':
         var = stats.returns.ewm(span=int(stats.windowSize)).var() * stats.no_of_days
         plt.figure(0)
         var.plot()
         plt.show()
+        plt.savefig('ewm_var.png')
     elif args.cmd == 'std':
         def roll_std(ret):
             mean_1 = np.exp(ret.mean() * stats.no_of_days)
@@ -556,6 +629,7 @@ if __name__ == "__main__":
                              index=[endDate for startDate, endDate, std in rolling_std])
         std_m.plot()
         plt.show()
+        plt.savefig('std.png')
 
     elif args.cmd == 'std_avg':
         def roll_std(ret):
@@ -579,3 +653,4 @@ if __name__ == "__main__":
         plt.grid(True)
         plt.title(f"Rolling Risk in a {stats.holdingPeriodYear}-Y holding Period")
         plt.show()
+        plt.savefig('std_avg.png')

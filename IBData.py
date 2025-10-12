@@ -35,7 +35,9 @@ class TestApp(EClient, EWrapper):
     def __init__(self):
         EClient.__init__(self, self)
         self.data = {}
+        self.portfolio_data = []
         self.orderId = 0
+        self.store = Store(hosts=[store_host], keyspace='store')
 
     def nextValidId(self, orderId: OrderId):
         self.orderId = orderId
@@ -50,6 +52,39 @@ class TestApp(EClient, EWrapper):
               f"errorString: {errorString}, "
               f"orderReject: {advancedOrderReject}, "
               f"errorTime: {errorTime}")
+        
+    def updatePortfolio(self, contract: Contract, position: float, marketPrice: float, marketValue: float,
+                        averageCost: float, unrealizedPNL: float, realizedPNL: float, accountName: str):
+        print("UpdatePortfolio.",
+              "Symbol:", contract.symbol,
+              "SecType:", contract.secType,
+              "Exchange:", contract.exchange,
+              "Position:", position,
+              "MarketPrice:", marketPrice,
+              "MarketValue:", marketValue,
+              "AverageCost:", averageCost,
+              "UnrealizedPNL:", unrealizedPNL,
+              "RealizedPNL:", realizedPNL,
+              "AccountName:", accountName)
+
+        self.portfolio_data.append({
+            'ticker': contract.symbol,
+            'account_id': accountName,
+            'position_type': 'Long' if position >= 0 else 'Short',
+            'qty': int(position),
+            'price': marketPrice,
+            'market_value': marketValue,
+            'avg_cost': averageCost,
+            'currency': {
+                'code': contract.currency,
+                'country': contract.exchange
+            }
+        })
+
+    def accountDownloadEnd(self, account: str):
+        print(f"Account download complete for {account}")
+        self.store.batch_insert_portfolio(self.portfolio_data)
+
 
     def historicalData(self, reqId: int, bar: BarData):
         print(reqId, bar)
@@ -69,9 +104,7 @@ class TestApp(EClient, EWrapper):
     def historicalDataEnd(self, reqId, start, end):
         print(f"Historical Data Ended for {reqId}. Started at {start}, ending at {end}")
         # print(self.data)
-
-        store = Store(hosts=[store_host], keyspace='store')
-        store.batch_insert_daily_price(self.data[reqId])
+        self.store.batch_insert_daily_price(self.data[reqId])
         latch.count_down()
         return super().historicalDataEnd(reqId, start, end)
 
@@ -85,6 +118,9 @@ app.connect(ib_host, port, clientId=1)
 threading.Thread(target=app.run, daemon=True).start()
 
 time.sleep(3)
+app.reqAccountUpdates(True, "") # Request portfolio data
+time.sleep(10) # Wait to receive portfolio data
+
 
 for contract in contractList:
     reqId_contract_map[app.nextId()] = contract

@@ -400,16 +400,19 @@ if __name__ == "__main__":
         plt.figure(0)
         stats.returns.plot()
         plt.title("log return")
+        plt.savefig('log_return.png')
 
         plt.figure(1)
         div = stats.div.groupby(stats.div.index.year).sum()
         div.plot()
         plt.title("tax adjusted div payment over year")
+        plt.savefig('div_0.png')
 
         plt.figure(2)
         div_yield = (np.exp(stats.div_return.groupby(stats.div_return.index.year).sum()) - 1) * 100
         div_yield.plot()
         plt.title("tax adjusted div yield per year")
+        plt.savefig('div_1.png')
 
         plt.figure(4)
         div_yield_over_time = (div / stats.Closeprice.loc[stats.Closeprice.first_valid_index()]) * 100
@@ -424,7 +427,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.show()
-        plt.savefig('div.png')
+        plt.savefig('div_2.png')
     elif args.cmd == 'o':
         rolling_return = stats.rolling_return_list()
         rolling_div_return = stats.rolling_div_return_list()
@@ -512,6 +515,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.show()
+        plt.savefig('corr.png')
     elif args.cmd == 'corr_3d':
         corr_matrix = stats.rolling_corr()
         fig = plt.figure()

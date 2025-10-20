@@ -215,6 +215,24 @@ class Stats():
         rolling_windows = self.returns.rolling(window=int(self.windowSize))
         corr_matrix = rolling_windows.corr(pairwise=True)
         return corr_matrix
+    
+    def generate_correlation_matrix_from_store(self):
+        if self.Closeprice.empty:
+            raise ValueError("No close price data loaded.")
+
+        # Filter valid tickers
+        valid_tickers = [col for col in self.returns.columns if self.returns[col].notna().sum() > 0]
+        df = self.returns[valid_tickers]
+
+        # Sort by total correlation
+        sorted_tickers = df.corr().sum().sort_values().index.tolist()
+        corr_matrix = df[sorted_tickers].corr()
+
+        return {
+            "tickers": sorted_tickers,
+            "matrix": corr_matrix.values.tolist()
+        }
+
 
 
 class Allocation():

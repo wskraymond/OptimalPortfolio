@@ -62,6 +62,20 @@ class PortfolioVisualizer(QMainWindow):
 
         self.refresh_data_and_render()
 
+    def _build_header(self, title, refresh_callback):
+        layout = QHBoxLayout()
+        label = QLabel(title)
+        label.setStyleSheet("font-weight: bold; font-size: 16px;")
+        layout.addWidget(label)
+
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.clicked.connect(refresh_callback)
+        layout.addWidget(refresh_btn)
+        layout.addStretch()
+
+        return layout
+
+
     def _fetch_json(self, endpoint):
         try:
             r = requests.get(f"{API_BASE}/{endpoint}", timeout=10)
@@ -99,12 +113,37 @@ class PortfolioVisualizer(QMainWindow):
         layout = QVBoxLayout()
         self.alloc_header = self._build_header("Portfolio allocation", self.refresh_data_and_render)
         layout.addLayout(self.alloc_header)
+
+        # Pie chart
         self.alloc_fig, self.alloc_ax = plt.subplots(figsize=(6,6))
         self.alloc_canvas = FigureCanvas(self.alloc_fig)
         layout.addWidget(self.alloc_canvas)
+
+        # Portfolio table
+        self.portfolio_table = QTableWidget()
+        self.portfolio_table.itemChanged.connect(self._on_portfolio_item_changed)
+        layout.addWidget(self.portfolio_table)
+
         self.allocation_tab.setLayout(layout)
 
+
+    def _on_portfolio_item_changed(self, item):
+        # Only handle edits in the "Input" column
+        col_name = self.portfolio_table.horizontalHeaderItem(item.column()).text()
+        if col_name == "Input":
+            ticker = self.portfolio_table.item(item.row(), 0).text()  # Ticker is first column
+            new_value = item.text()
+
+            try:
+                r = requests.post(f"{API_BASE}/update_input", json={"Ticker": ticker, "Input": new_value}, timeout=5)
+                r.raise_for_status()
+            except Exception as e:
+                QMessageBox.critical(self, "Update Error", f"Failed to update Input for {ticker}:\n{e}")
+
+
+
     def render_allocation(self):
+        # --- Pie chart ---
         self.alloc_ax.clear()
         if self.positions_df.empty:
             self.alloc_ax.text(0.5, 0.5, "No positions data", ha="center", va="center")
@@ -117,6 +156,29 @@ class PortfolioVisualizer(QMainWindow):
                 self.alloc_ax.set_ylabel("")
                 self.alloc_ax.set_title("Allocation by market value")
         self.alloc_canvas.draw_idle()
+
+        # --- Portfolio table ---
+        if not self.positions_df.empty:
+            cols = ["Ticker", "MarketValue", "Qty", "Price", "Position", "Input"]
+            self.portfolio_table.clear()
+            self.portfolio_table.setRowCount(len(self.positions_df))
+            self.portfolio_table.setColumnCount(len(cols))
+            self.portfolio_table.setHorizontalHeaderLabels(cols)
+
+            for i, row in self.positions_df.iterrows():
+                for j, col in enumerate(cols):
+                    val = row.get(col, "")
+                    item = QTableWidgetItem(str(val))
+
+                    # ✅ Only allow editing in the "Input" column
+                    if col != "Input":
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+
+                    self.portfolio_table.setItem(i, j, item)
+
+            self.portfolio_table.resizeColumnsToContents()
+
+
 
     def _build_beta_tab(self):
         layout = QVBoxLayout()
@@ -143,19 +205,52 @@ class PortfolioVisualizer(QMainWindow):
         layout = QVBoxLayout()
         header = self._build_header("Correlation heatmap", self.refresh_data_and_render)
         layout.addLayout(header)
+
         self.corr_fig, self.corr_ax = plt.subplots(figsize=(9,7))
         self.corr_canvas = FigureCanvas(self.corr_fig)
         layout.addWidget(self.corr_canvas)
+
+        # Add weighted HPR table
+        self.hpr_table = QTableWidget()
+        layout.addWidget(self.hpr_table)
+
         self.corr_tab.setLayout(layout)
 
+
     def render_corr(self):
-        self.corr_ax.clear()
+        # Clear figure completely to avoid duplicate colorbars
+        self.corr_fig.clf()
+        self.corr_ax = self.corr_fig.add_subplot(111)
+
         if self.corr_df.empty:
             self.corr_ax.text(0.5, 0.5, "No correlation data", ha="center", va="center")
         else:
-            sns.heatmap(self.corr_df, cmap="coolwarm", vmin=-1, vmax=1, ax=self.corr_ax, linewidths=0.3)
+            sns.heatmap(self.corr_df, cmap="coolwarm", vmin=-1, vmax=1,
+                        ax=self.corr_ax, linewidths=0.3)
             self.corr_ax.set_title("Ticker correlation matrix")
+
         self.corr_canvas.draw_idle()
+
+        # Render Weighted HPR table (unchanged)
+        cor = self._fetch_json("correlation")
+        if cor and "weighted_hpr" in cor:
+            tickers = cor["tickers"]
+            hpr = cor["weighted_hpr"]
+
+            self.hpr_table.clear()
+            self.hpr_table.setRowCount(1)
+            self.hpr_table.setColumnCount(len(tickers))
+            self.hpr_table.setHorizontalHeaderLabels(tickers)
+
+            for j, t in enumerate(tickers):
+                val = hpr.get(t, 0.0)
+                item = QTableWidgetItem(f"{val:.6f}")
+                item.setFlags(item.flags() | Qt.ItemIsEditable)
+                self.hpr_table.setItem(0, j, item)
+
+            self.hpr_table.resizeColumnsToContents()
+
+
 
     def _build_tangent_tab(self):
         layout = QVBoxLayout()
@@ -210,3 +305,10 @@ class PortfolioVisualizer(QMainWindow):
         self.risk_table.clear()
         self.risk_table.setRowCount(len(items))
         self.risk_table.setColumnCount(2)
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = PortfolioVisualizer()
+    window.show()
+    sys.exit(app.exec_())

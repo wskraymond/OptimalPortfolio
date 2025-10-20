@@ -46,10 +46,10 @@
 	"postCreateCommand": "poetry run pip install --upgrade pip setuptools wheel && poetry install",
 
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/OptimalPortfolio,type=bind",
-	"workspaceFolder": "/workspaces/OptimalPortfolio"
+	"workspaceFolder": "/workspaces/OptimalPortfolio",
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": [5000],
 
 	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "devcontainer"

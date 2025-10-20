@@ -5,21 +5,33 @@ app = Flask(__name__)
 CORS(app)
 
 # --- Mock data (replace with your real sources) ---
-
 POSITIONS = [
-    {"Ticker": "2840.hk", "MarketValue": 6795, "Beta": 0.0884},
-    {"Ticker": "159919.SZ", "MarketValue": 0, "Beta": 0.1574},
-    {"Ticker": "0001.HK", "MarketValue": 60100, "Beta": 0.2708},
-    {"Ticker": "9988.HK", "MarketValue": 21020, "Beta": 0.1075},
-    {"Ticker": "DBC", "MarketValue": 0, "Beta": 0.4531},
-    {"Ticker": "2800.HK", "MarketValue": 0, "Beta": 0.2120},
-    {"Ticker": "BIDU", "MarketValue": 772, "Beta": 1.1677},
-    {"Ticker": "BRK-B", "MarketValue": 13162, "Beta": 0.9599},
-    {"Ticker": "REET", "MarketValue": 2820, "Beta": 0.5240},
-    {"Ticker": "ARKK", "MarketValue": 549, "Beta": 0.7705},
-    {"Ticker": "LIT", "MarketValue": 3389, "Beta": 1.1033},
-    {"Ticker": "SPY", "MarketValue": 0, "Beta": 1.0},
+    {"Ticker": "2840.hk", "MarketValue": 6795, "Beta": 0.0884,
+     "Qty": 100, "Price": 67.95, "Position": "Long", "Input": "Manual"},
+    {"Ticker": "159919.SZ", "MarketValue": 0, "Beta": 0.1574,
+     "Qty": 0, "Price": 0.0, "Position": "None", "Input": "Manual"},
+    {"Ticker": "0001.HK", "MarketValue": 60100, "Beta": 0.2708,
+     "Qty": 2000, "Price": 30.05, "Position": "Long", "Input": "Manual"},
+    {"Ticker": "9988.HK", "MarketValue": 21020, "Beta": 0.1075,
+     "Qty": 100, "Price": 210.20, "Position": "Long", "Input": "Manual"},
+    {"Ticker": "DBC", "MarketValue": 0, "Beta": 0.4531,
+     "Qty": 0, "Price": 0.0, "Position": "None", "Input": "Manual"},
+    {"Ticker": "2800.HK", "MarketValue": 0, "Beta": 0.2120,
+     "Qty": 0, "Price": 0.0, "Position": "None", "Input": "Manual"},
+    {"Ticker": "BIDU", "MarketValue": 772, "Beta": 1.1677,
+     "Qty": 2, "Price": 386.0, "Position": "Long", "Input": "Manual"},
+    {"Ticker": "BRK-B", "MarketValue": 13162, "Beta": 0.9599,
+     "Qty": 40, "Price": 329.05, "Position": "Long", "Input": "Manual"},
+    {"Ticker": "REET", "MarketValue": 2820, "Beta": 0.5240,
+     "Qty": 100, "Price": 28.20, "Position": "Long", "Input": "Manual"},
+    {"Ticker": "ARKK", "MarketValue": 549, "Beta": 0.7705,
+     "Qty": 10, "Price": 54.90, "Position": "Long", "Input": "Manual"},
+    {"Ticker": "LIT", "MarketValue": 3389, "Beta": 1.1033,
+     "Qty": 50, "Price": 67.78, "Position": "Long", "Input": "Manual"},
+    {"Ticker": "SPY", "MarketValue": 0, "Beta": 1.0,
+     "Qty": 0, "Price": 0.0, "Position": "None", "Input": "Manual"},
 ]
+
 
 TICKERS = [p["Ticker"] for p in POSITIONS]
 
@@ -64,13 +76,43 @@ RISK_METRICS = {
     "Leverage Ratio": 1.5
 }
 
+from flask import request
+
+@app.post("/api/update_input")
+def update_input():
+    data = request.json  # expects {"Ticker": "0001.HK", "Input": "NewValue"}
+    ticker = data.get("Ticker")
+    new_input = data.get("Input")
+
+    # Update in-memory POSITIONS list
+    for p in POSITIONS:
+        if p["Ticker"] == ticker:
+            p["Input"] = new_input
+            break
+
+    return jsonify({"status": "success", "updated": {"Ticker": ticker, "Input": new_input}})
+
+
 @app.get("/api/positions")
 def positions():
     return jsonify(POSITIONS)
 
 @app.get("/api/correlation")
 def correlation():
-    return jsonify({"tickers": TICKERS, "matrix": CORRELATION})
+    return jsonify({"tickers": TICKERS, "matrix": CORRELATION, "weighted_hpr": {
+            "2840.hk": 0.0883636,
+            "159919.SZ": 0.1574364,
+            "0001.HK": 0.2708308,
+            "9988.HK": 0.1074900,
+            "DBC": 0.4530765,
+            "2800.HK": 0.2119516,
+            "BIDU": 1.1676715,
+            "BRK-B": 0.9598599,
+            "REET": 0.5240434,
+            "ARKK": 0.7704677,
+            "LIT": 1.1032598,
+            "SPY": 1.0
+        }})
 
 @app.get("/api/betas")
 def betas():

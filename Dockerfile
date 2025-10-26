@@ -24,7 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \ 
     libxml2-dev \
     libxslt-dev \
-    docker.io
+    docker.io \
+    libxcb-xinerama0
 
 # Clean up to reduce image size
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*

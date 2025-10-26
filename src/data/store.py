@@ -15,7 +15,7 @@ from datetime import datetime
 from cassandra.cqlengine.management import sync_table, drop_table
 from cassandra.cqlengine.models import Model
 
-from src.data.model.daily_price import DailyPrice, Currency, Portfolio
+from data.model.daily_price import DailyPrice, Currency, Portfolio
 import pandas as pd
 
 class Store:

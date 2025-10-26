@@ -11,7 +11,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
-
+optimal-portfolio = { path = "..", develop = true }
 certifi = "^2024.2.2"
 chainmap = "1.0.3"
 chardet = "3.0.4"
@@ -47,6 +47,7 @@ yfinance = "^0.2.66"
 yahooquery = "2.2.15"
 flask = "^3.1.2"
 flask-cors = "^6.0.1"
+flask-socketio = "^5.5.1"
 
 
 [tool.poetry.scripts]

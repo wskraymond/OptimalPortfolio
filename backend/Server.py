@@ -1,8 +1,12 @@
 from flask import Flask, jsonify
+from flask_socketio import SocketIO, emit
 from flask_cors import CORS
+from analytics.Analyzer import RollingPortfolioAnalyzer
+from analytics.Allocation import Allocation
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- Mock data (replace with your real sources) ---
 POSITIONS = [
@@ -116,15 +120,144 @@ def correlation():
 
 @app.get("/api/betas")
 def betas():
-    return jsonify(BETAS)
+    # Parameters (mocked for now)
+    Rf = 0.0037   # 1-year T-bill log return ≈ 0.37%
+    Rm = 0.08     # Assume 8% expected market return
+
+    total_mv = sum(p["MarketValue"] for p in POSITIONS)
+    results = {}
+    portfolio_beta = 0
+    portfolio_alpha = 0
+
+    for p in POSITIONS:
+        ticker = p["Ticker"]
+        beta = p["Beta"]
+        weight = p["MarketValue"] / total_mv if total_mv > 0 else 0
+
+        # CAPM expected return
+        capm_er = Rf + beta * (Rm - Rf)
+
+        # For now, mock actual return as weight * 10% (replace with real data)
+        actual_return = 0.10 * weight
+        alpha = actual_return - capm_er
+
+        weighted_beta = beta * weight
+
+        results[ticker] = {
+            "beta": beta,
+            "weighted_beta": weighted_beta,
+            "capm_er": capm_er,
+            "alpha": alpha
+        }
+
+        portfolio_beta += weighted_beta
+        portfolio_alpha += alpha * weight
+
+    results["portfolio"] = {
+        "beta": portfolio_beta,
+        "alpha": portfolio_alpha
+    }
+
+    return jsonify(results)
+
 
 @app.get("/api/tangent")
 def tangent():
     return jsonify(TANGENT_WEIGHTS)
 
+import math
+import numpy as np
+
 @app.get("/api/risk")
 def risk():
-    return jsonify(RISK_METRICS)
+    Rf = 0.0037  # 1-year T-bill log return
+    portfolio_return = 0.022805504  # from Excel
+    total_cov = 0.019739749
+    non_sys_var = 0.004066145
+    sys_var = 0.013918029
+    portfolio_beta = 0.4869
+
+    portfolio_risk = math.sqrt(total_cov)
+    non_sys_risk = math.sqrt(non_sys_var)
+    sys_risk = math.sqrt(sys_var)
+
+    sharpe = (portfolio_return - Rf) / portfolio_risk
+    treynor = (portfolio_return - Rf) / portfolio_beta
+
+    # VaR at 95% and 99%
+    z95, z99 = 1.644854, 2.326348
+    portfolio_value = sum(p["MarketValue"] for p in POSITIONS)
+    var95 = -z95 * portfolio_risk * portfolio_value
+    var99 = -z99 * portfolio_risk * portfolio_value
+
+    return jsonify({
+        "Total Covariance": total_cov,
+        "Portfolio Risk(%)": portfolio_risk * 100,
+        "Non-Systematic Var": non_sys_var,
+        "Non-Systematic Risk(%)": non_sys_risk * 100,
+        "Systematic Var": sys_var,
+        "Systematic Risk(%)": sys_risk * 100,
+        "Portfolio Return(%)": portfolio_return * 100,
+        "Sharpe Ratio": sharpe,
+        "Treynor Ratio": treynor,
+        "Value At Risk 95%": var95,
+        "Value At Risk 99%": var99
+    })
+
+SUPPORTED_CMDS = {
+    "div": "run_div",
+    "o": "run_optimal",
+    "o_avg": "run_optimal_avg",
+    "corr": "run_corr",
+    "corr_3d": "run_corr_3d",
+    "ewm_corr_avg": "run_ewm_corr_avg",
+    "alpha": "run_alpha",
+    "alpha_avg": "run_alpha_avg",
+    "beta_avg": "run_beta_avg",
+    "var": "run_var",
+    "ewm_var": "run_ewm_var",
+    "std": "run_std",
+    "std_avg": "run_std_avg",
+}
+
+@socketio.on("run_analysis")
+def handle_run_analysis(data):
+    """
+    data is expected to be a dict like:
+    {
+        "cmd": "div",
+        "args": {
+            "startdate": "01/05/2015",
+            "holdingPeriodYear": 0.25,
+            "rollingYr": 5,
+            "divTaxRate": 0.3
+        }
+    }
+    """
+    cmd = data.get("cmd")
+    if cmd not in SUPPORTED_CMDS:
+        emit("analysis_result", {"error": f"Unsupported command {cmd}"})
+        return
+
+    args = data.get("args", {})
+    startdate = args.get("startdate", "01/05/2015")
+    holdingPeriodYear = float(args.get("holdingPeriodYear", 0.25))
+    rollingYr = float(args.get("rollingYr", 5))
+    divTaxRate = float(args.get("divTaxRate", 0.3))
+
+    analyzer = RollingPortfolioAnalyzer(
+        startdate=startdate,
+        holdingPeriodYear=holdingPeriodYear,
+        rollingYr=rollingYr,
+        divTaxRate=divTaxRate
+    )
+
+    method = getattr(analyzer, SUPPORTED_CMDS[cmd])
+    result = method()
+
+    # Push result back to the client
+    emit("analysis_result", result)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

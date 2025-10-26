@@ -12,7 +12,6 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"
 
-PyQt6 = "^6.4.2"
 certifi = "^2024.2.2"
 chainmap = "1.0.3"
 chardet = "3.0.4"
@@ -46,6 +45,8 @@ cassandra-driver = "~3.25.0"
 mplcursors = "^0.7"
 yfinance = "^0.2.66"
 yahooquery = "2.2.15"
+python-socketio = "^5.14.2"
+websocket-client = "^1.9.0"
 
 
 [tool.poetry.scripts]

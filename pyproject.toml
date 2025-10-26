@@ -9,6 +9,12 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
+packages = [
+    { include = "analytics", from = "src" },
+    { include = "data", from = "src" }
+]
+
+
 [tool.poetry.dependencies]
 python = "^3.10"
 

@@ -3,6 +3,8 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import base64
+import socketio
 
 """ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
@@ -16,16 +18,110 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget,
     QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
-    QHBoxLayout, QPushButton, QMessageBox
+    QHBoxLayout, QPushButton, QMessageBox,
+    QFormLayout, QLineEdit, QScrollArea, QComboBox
 )
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import pyqtSignal, QObject
+
+#from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvaspropagateSizeHints
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-
+host = "http://localhost:5000"
 API_BASE = "http://localhost:5000/api"
+
+# Socket.IO client
+sio = socketio.Client()
+
+class AnalyzerTab(QWidget):
+    result_received = pyqtSignal(dict)   # signal carrying the result dict
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        layout = QVBoxLayout()
+
+        # Form for arguments
+        form = QFormLayout()
+        self.startdate_input = QLineEdit("01/05/2015")
+        self.holding_input = QLineEdit("0.25")
+        self.rolling_input = QLineEdit("5")
+        self.divtax_input = QLineEdit("0.3")
+        form.addRow("Start Date (dd/mm/yyyy):", self.startdate_input)
+        form.addRow("Holding Period Year:", self.holding_input)
+        form.addRow("Rolling Years:", self.rolling_input)
+        form.addRow("Dividend Tax Rate:", self.divtax_input)
+        layout.addLayout(form)
+
+        # Dropdown for commands
+        self.cmd_dropdown = QComboBox()
+        self.cmd_dropdown.addItems([
+            "div", "o", "o_avg", "corr", "corr_3d", "ewm_corr_avg",
+            "alpha", "alpha_avg", "beta_avg", "var", "ewm_var", "std", "std_avg"
+        ])
+        layout.addWidget(self.cmd_dropdown)
+
+        # Run button
+        self.run_button = QPushButton("Run Analysis")
+        self.run_button.clicked.connect(self.run_analysis)
+        layout.addWidget(self.run_button)
+
+        # Scroll area for images
+        self.scroll_area = QScrollArea()
+        self.scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setWidget(self.scroll_content)
+        layout.addWidget(self.scroll_area)
+
+        self.setLayout(layout)
+
+        self.result_received.connect(self.display_results)
+
+        if not sio.connected:
+            sio.connect(host)
+
+            @sio.on("analysis_result")
+            def on_result(data):
+                # emit signal instead of touching UI directly
+                self.result_received.emit(data)
+
+    def run_analysis(self):
+        cmd = self.cmd_dropdown.currentText()
+        args = {
+            "startdate": self.startdate_input.text(),
+            "holdingPeriodYear": self.holding_input.text(),
+            "rollingYr": self.rolling_input.text(),
+            "divTaxRate": self.divtax_input.text(),
+        }
+        # Emit event to backend
+        sio.emit("run_analysis", {"cmd": cmd, "args": args})
+
+    def display_results(self, data):
+        # Clear old images
+        for i in reversed(range(self.scroll_layout.count())):
+            widget = self.scroll_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        # Display new images
+        images = data.get("images", {})
+        for name, b64 in images.items():
+            label = QLabel()
+            pixmap = QPixmap()
+            pixmap.loadFromData(base64.b64decode(b64))
+            if not pixmap.isNull():
+                label.setPixmap(pixmap)
+                label.setScaledContents(True)
+                self.scroll_layout.addWidget(QLabel(name))
+                self.scroll_layout.addWidget(label)
+            else:
+                self.scroll_layout.addWidget(QLabel(f"{name}: (invalid image)"))
+
+
 
 class PortfolioVisualizer(QMainWindow):
     def __init__(self):
@@ -45,20 +141,17 @@ class PortfolioVisualizer(QMainWindow):
         self.allocation_tab = QWidget()
         self.beta_tab = QWidget()
         self.corr_tab = QWidget()
-        self.tangent_tab = QWidget()
-        self.risk_tab = QWidget()
+        self.analyzer_tab = AnalyzerTab(self)
 
         self.tabs.addTab(self.allocation_tab, "Allocation")
         self.tabs.addTab(self.beta_tab, "Beta")
         self.tabs.addTab(self.corr_tab, "Correlation")
-        self.tabs.addTab(self.tangent_tab, "Tangent portfolio")
-        self.tabs.addTab(self.risk_tab, "Risk metrics")
+        self.tabs.addTab(self.analyzer_tab, "Analyzer")
 
         self._build_allocation_tab()
         self._build_beta_tab()
         self._build_corr_tab()
-        self._build_tangent_tab()
-        self._build_risk_tab()
+
 
         self.refresh_data_and_render()
 
@@ -106,25 +199,38 @@ class PortfolioVisualizer(QMainWindow):
         self.render_allocation()
         self.render_beta()
         self.render_corr()
-        self.render_tangent()
-        self.render_risk()
 
     def _build_allocation_tab(self):
         layout = QVBoxLayout()
         self.alloc_header = self._build_header("Portfolio allocation", self.refresh_data_and_render)
         layout.addLayout(self.alloc_header)
 
-        # Pie chart
-        self.alloc_fig, self.alloc_ax = plt.subplots(figsize=(6,6))
+        # --- Top half: two pie charts side by side ---
+        chart_layout = QHBoxLayout()
+        self.alloc_fig, self.alloc_ax = plt.subplots(figsize=(4,4))   # smaller
         self.alloc_canvas = FigureCanvas(self.alloc_fig)
-        layout.addWidget(self.alloc_canvas)
+        chart_layout.addWidget(self.alloc_canvas)
 
-        # Portfolio table
+        self.tangent_fig, self.tangent_ax = plt.subplots(figsize=(4,4))  # smaller
+        self.tangent_canvas = FigureCanvas(self.tangent_fig)
+        chart_layout.addWidget(self.tangent_canvas)
+
+        # --- Bottom half: two tables side by side ---
+        table_layout = QHBoxLayout()
         self.portfolio_table = QTableWidget()
         self.portfolio_table.itemChanged.connect(self._on_portfolio_item_changed)
-        layout.addWidget(self.portfolio_table)
+        table_layout.addWidget(self.portfolio_table)
+
+        self.risk_table = QTableWidget()
+        table_layout.addWidget(self.risk_table)
+
+        # Add both halves to main layout
+        layout.addLayout(chart_layout, stretch=1)
+        layout.addLayout(table_layout, stretch=1)
 
         self.allocation_tab.setLayout(layout)
+
+
 
 
     def _on_portfolio_item_changed(self, item):
@@ -143,7 +249,7 @@ class PortfolioVisualizer(QMainWindow):
 
 
     def render_allocation(self):
-        # --- Pie chart ---
+        # --- Allocation pie ---
         self.alloc_ax.clear()
         if self.positions_df.empty:
             self.alloc_ax.text(0.5, 0.5, "No positions data", ha="center", va="center")
@@ -157,26 +263,65 @@ class PortfolioVisualizer(QMainWindow):
                 self.alloc_ax.set_title("Allocation by market value")
         self.alloc_canvas.draw_idle()
 
-        # --- Portfolio table ---
+        # --- Tangent pie ---
+        self.tangent_ax.clear()
+        if not self.tangent:
+            self.tangent_ax.text(0.5, 0.5, "No tangent data", ha="center", va="center")
+        else:
+            s = pd.Series(self.tangent).sort_values(ascending=False)
+            s.plot.pie(ax=self.tangent_ax, autopct="%.1f%%", legend=False)
+            self.tangent_ax.set_ylabel("")
+            self.tangent_ax.set_title("Tangent portfolio weights")
+        self.tangent_canvas.draw_idle()
+
+        # --- Portfolio table with tangent weights ---
         if not self.positions_df.empty:
-            cols = ["Ticker", "MarketValue", "Qty", "Price", "Position", "Input"]
+            cols = ["Ticker", "MarketValue", "Qty", "Price", "Position", "Input", "Tangent Weight"]
             self.portfolio_table.clear()
             self.portfolio_table.setRowCount(len(self.positions_df))
             self.portfolio_table.setColumnCount(len(cols))
             self.portfolio_table.setHorizontalHeaderLabels(cols)
 
             for i, row in self.positions_df.iterrows():
+                ticker = row.get("Ticker", "")
                 for j, col in enumerate(cols):
-                    val = row.get(col, "")
-                    item = QTableWidgetItem(str(val))
-
-                    # ✅ Only allow editing in the "Input" column
-                    if col != "Input":
+                    if col == "Tangent Weight":
+                        val = self.tangent.get(ticker, 0.0)
+                        item = QTableWidgetItem(f"{val:.6f}")
                         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-
+                    else:
+                        val = row.get(col, "")
+                        item = QTableWidgetItem(str(val))
+                        if col != "Input":
+                            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     self.portfolio_table.setItem(i, j, item)
 
             self.portfolio_table.resizeColumnsToContents()
+
+        # --- Risk metrics table (reuse render_risk logic) ---
+        if not self.risk_metrics:
+            self.risk_table.clear()
+            self.risk_table.setRowCount(1)
+            self.risk_table.setColumnCount(1)
+            self.risk_table.setHorizontalHeaderLabels(["Message"])
+            self.risk_table.setItem(0, 0, QTableWidgetItem("No risk data"))
+        else:
+            metrics = self.risk_metrics
+            rows = list(metrics.items())
+            self.risk_table.clear()
+            self.risk_table.setRowCount(len(rows))
+            self.risk_table.setColumnCount(2)
+            self.risk_table.setHorizontalHeaderLabels(["Metric", "Value"])
+            for i, (k, v) in enumerate(rows):
+                key_item = QTableWidgetItem(k)
+                val_item = QTableWidgetItem(f"{v:.4f}" if isinstance(v, float) else str(v))
+                key_item.setFlags(key_item.flags() & ~Qt.ItemIsEditable)
+                val_item.setFlags(val_item.flags() & ~Qt.ItemIsEditable)
+                self.risk_table.setItem(i, 0, key_item)
+                self.risk_table.setItem(i, 1, val_item)
+            self.risk_table.resizeColumnsToContents()
+
+
 
 
 
@@ -184,22 +329,51 @@ class PortfolioVisualizer(QMainWindow):
         layout = QVBoxLayout()
         header = self._build_header("Systematic risk (betas)", self.refresh_data_and_render)
         layout.addLayout(header)
-        self.beta_fig, self.beta_ax = plt.subplots(figsize=(8,5))
-        self.beta_canvas = FigureCanvas(self.beta_fig)
-        layout.addWidget(self.beta_canvas)
+
+        # Replace chart with table
+        self.beta_table = QTableWidget()
+        layout.addWidget(self.beta_table)
+
         self.beta_tab.setLayout(layout)
 
+
     def render_beta(self):
-        self.beta_ax.clear()
         if not self.betas:
-            self.beta_ax.text(0.5, 0.5, "No beta data", ha="center", va="center")
-        else:
-            s = pd.Series(self.betas).sort_values()
-            s.plot(kind="bar", ax=self.beta_ax, color="steelblue")
-            self.beta_ax.set_title("Portfolio betas by ticker")
-            self.beta_ax.axhline(1.0, color="red", linestyle="--", linewidth=1, label="Market beta (SPY=1)")
-            self.beta_ax.legend()
-        self.beta_canvas.draw_idle()
+            self.beta_table.clear()
+            self.beta_table.setRowCount(1)
+            self.beta_table.setColumnCount(1)
+            self.beta_table.setHorizontalHeaderLabels(["Message"])
+            self.beta_table.setItem(0, 0, QTableWidgetItem("No beta data"))
+            return
+
+        # Columns
+        cols = ["Ticker", "Market ETF", "Weighted Beta", "CAPM E[R]", "Alpha"]
+        rows = [t for t in self.betas.keys() if t.lower() != "portfolio"]
+        self.beta_table.clear()
+        self.beta_table.setRowCount(len(rows) + 1)  # +1 for portfolio summary
+        self.beta_table.setColumnCount(len(cols))
+        self.beta_table.setHorizontalHeaderLabels(cols)
+
+        # Fill rows
+        for i, ticker in enumerate(rows):
+            data = self.betas[ticker]
+            self.beta_table.setItem(i, 0, QTableWidgetItem(ticker))
+            self.beta_table.setItem(i, 1, QTableWidgetItem("SPY"))  # or VOO
+            self.beta_table.setItem(i, 2, QTableWidgetItem(f"{data.get('beta', 0):.3f}"))
+            self.beta_table.setItem(i, 3, QTableWidgetItem(f"{data.get('capm_er', 0):.2%}"))
+            self.beta_table.setItem(i, 4, QTableWidgetItem(f"{data.get('alpha', 0):.2%}"))
+
+        # Portfolio summary row
+        port = self.betas.get("portfolio", {})
+        last_row = len(rows)
+        self.beta_table.setItem(last_row, 0, QTableWidgetItem("Portfolio"))
+        self.beta_table.setItem(last_row, 1, QTableWidgetItem("-"))
+        self.beta_table.setItem(last_row, 2, QTableWidgetItem(f"{port.get('beta', 0):.3f}"))
+        self.beta_table.setItem(last_row, 3, QTableWidgetItem("-"))
+        self.beta_table.setItem(last_row, 4, QTableWidgetItem(f"{port.get('alpha', 0):.2%}"))
+
+        self.beta_table.resizeColumnsToContents()
+
 
     def _build_corr_tab(self):
         layout = QVBoxLayout()
@@ -250,61 +424,6 @@ class PortfolioVisualizer(QMainWindow):
 
             self.hpr_table.resizeColumnsToContents()
 
-
-
-    def _build_tangent_tab(self):
-        layout = QVBoxLayout()
-        header = self._build_header("Tangent portfolio weights", self.refresh_data_and_render)
-        layout.addLayout(header)
-        self.tangent_fig, self.tangent_ax = plt.subplots(figsize=(8,5))
-        self.tangent_canvas = FigureCanvas(self.tangent_fig)
-        layout.addWidget(self.tangent_canvas)
-
-        self.tangent_table = QTableWidget()
-        layout.addWidget(self.tangent_table)
-
-        self.tangent_tab.setLayout(layout)
-
-    def render_tangent(self):
-        self.tangent_ax.clear()
-        if not self.tangent:
-            self.tangent_ax.text(0.5, 0.5, "No tangent portfolio data", ha="center", va="center")
-            self.tangent_canvas.draw_idle()
-            return
-
-        s = pd.Series(self.tangent).sort_values(ascending=False)
-        s.plot(kind="bar", ax=self.tangent_ax, color="darkorange")
-        self.tangent_ax.set_title("Tangent portfolio weights")
-        self.tangent_canvas.draw_idle()
-
-        self.tangent_table.clear()
-        self.tangent_table.setRowCount(len(s))
-        self.tangent_table.setColumnCount(2)
-        self.tangent_table.setHorizontalHeaderLabels(["Ticker", "Weight"])
-        for i, (k, v) in enumerate(s.items()):
-            self.tangent_table.setItem(i, 0, QTableWidgetItem(str(k)))
-            self.tangent_table.setItem(i, 1, QTableWidgetItem(f"{v:.6f}"))
-        self.tangent_table.resizeColumnsToContents()
-
-    def _build_risk_tab(self):
-        layout = QVBoxLayout()
-        header = self._build_header("Portfolio risk metrics", self.refresh_data_and_render)
-        layout.addLayout(header)
-
-        self.risk_table = QTableWidget()
-        layout.addWidget(self.risk_table)
-
-        self.risk_fig, self.risk_ax = plt.subplots(figsize=(7,4))
-        self.risk_canvas = FigureCanvas(self.risk_fig)
-        layout.addWidget(self.risk_canvas)
-
-        self.risk_tab.setLayout(layout)
-
-    def render_risk(self):
-        items = list(self.risk_metrics.items())
-        self.risk_table.clear()
-        self.risk_table.setRowCount(len(items))
-        self.risk_table.setColumnCount(2)
 
 
 if __name__ == "__main__":

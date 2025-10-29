@@ -25,16 +25,9 @@ from scipy import stats as ss
 
 store_host = 'host.docker.internal'
 
-# Create contract from portfolio row
-def create_contract_from_portfolio_row(row):
-    contract = Contract()
-    contract.symbol = row.name  # 'ticker' is set as index in DataFrame
-    contract.secType = "STK"
-    contract.currency = row['currency']['code']
-    return contract
 
 class Stats():
-    def __init__(self, startdate, holdingPeriodYear, rollingYr, divTaxRate):
+    def __init__(self, startdate, holdingPeriodYear, rollingYr, divTaxRate, store):
         self.TRADING_DAYS = 252
         self.holdingPeriodYear = holdingPeriodYear
         self.no_of_days = self.TRADING_DAYS * self.holdingPeriodYear  # number of days for a quarter = 63
@@ -50,17 +43,7 @@ class Stats():
         self.divTaxRate = divTaxRate
         self.rollingYr = rollingYr
         self.windowSize = self.TRADING_DAYS * rollingYr
-        self.store = Store(hosts=[store_host], keyspace='store')
-        # Append first portfolio contract to global list
-        global contractList
-        portfolio_list = self.store.select_portfolio_in_pd()
-        if not portfolio_list.empty:
-            for _, row in portfolio_list.iterrows():
-                contract = create_contract_from_portfolio_row(row)
-                contractList.append(contract)
-
-
-        print("contractList=", contractList)
+        self.store = store
 
     def loadYC(self):
         syms = ['DGS30', 'DGS20', 'DGS10', 'DGS5', 'DGS2', 'DGS1', 'DGS1MO', 'DGS3MO']

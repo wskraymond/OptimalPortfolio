@@ -3,10 +3,15 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from analytics.Analyzer import RollingPortfolioAnalyzer
 from analytics.Allocation import Allocation
+from data.contract.MyContract import contractList
+from data.store import Store
+from ibapi.contract import Contract
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
+store_host = 'host.docker.internal'
+store = Store(hosts=[store_host], keyspace='store')
 
 # --- Mock data (replace with your real sources) ---
 POSITIONS = [
@@ -249,7 +254,8 @@ def handle_run_analysis(data):
         startdate=startdate,
         holdingPeriodYear=holdingPeriodYear,
         rollingYr=rollingYr,
-        divTaxRate=divTaxRate
+        divTaxRate=divTaxRate,
+        store=store
     )
 
     method = getattr(analyzer, SUPPORTED_CMDS[cmd])
@@ -258,6 +264,28 @@ def handle_run_analysis(data):
     # Push result back to the client
     emit("analysis_result", result)
 
+# Create contract from portfolio row
+def create_contract_from_portfolio_row(row):
+    contract = Contract()
+    contract.symbol = row.name  # 'ticker' is set as index in DataFrame
+    contract.secType = "STK"
+    contract.currency = row['currency']['code']
+    return contract
+
+def pre_start_init():
+    print("Initializing resources...")
+    # Append first portfolio contract to global list
+    global contractList
+    portfolio_list = store.select_portfolio_in_pd()
+    if not portfolio_list.empty:
+        for _, row in portfolio_list.iterrows():
+            contract = create_contract_from_portfolio_row(row)
+            contractList.append(contract)
+
+
+    print("contractList=", contractList)
+    # Load config, connect to DB, etc.
 
 if __name__ == "__main__":
+    pre_start_init()
     app.run(host="0.0.0.0", port=5000, debug=True)

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import base64
 import socketio
+from functools import partial
 
 """ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
@@ -18,8 +19,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget,
     QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
-    QHBoxLayout, QPushButton, QMessageBox,
-    QFormLayout, QLineEdit, QScrollArea, QComboBox
+    QHBoxLayout, QPushButton, QMessageBox,QDialog,
+    QFormLayout, QLineEdit, QScrollArea, QComboBox, QSizePolicy, QAction
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import pyqtSignal, QObject
@@ -36,6 +37,30 @@ API_BASE = "http://localhost:5000/api"
 
 # Socket.IO client
 sio = socketio.Client()
+
+
+class ImageViewer(QDialog):
+    def __init__(self, name, pixmap):
+        super().__init__()
+        self.setWindowTitle(name)
+        self.resize(800, 600)  # Initial size, but user can resize freely
+
+        layout = QVBoxLayout(self)
+
+        self.label = QLabel()
+        self.label.setPixmap(pixmap)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setScaledContents(True)  # ✅ Enables dynamic scaling
+        self.label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(self.label)
+
+        layout.addWidget(scroll)
+
+
+
 
 class AnalyzerTab(QWidget):
     result_received = pyqtSignal(dict)   # signal carrying the result dict
@@ -100,26 +125,35 @@ class AnalyzerTab(QWidget):
         # Emit event to backend
         sio.emit("run_analysis", {"cmd": cmd, "args": args})
 
+
     def display_results(self, data):
-        # Clear old images
         for i in reversed(range(self.scroll_layout.count())):
             widget = self.scroll_layout.itemAt(i).widget()
             if widget:
                 widget.setParent(None)
 
-        # Display new images
         images = data.get("images", {})
         for name, b64 in images.items():
-            label = QLabel()
             pixmap = QPixmap()
             pixmap.loadFromData(base64.b64decode(b64))
             if not pixmap.isNull():
-                label.setPixmap(pixmap)
-                label.setScaledContents(True)
+                preview = QLabel()
+                preview.setPixmap(pixmap.scaledToWidth(300, Qt.SmoothTransformation))
+                preview.setCursor(Qt.PointingHandCursor)
+
+                # ✅ Use partial to bind arguments correctly
+                preview.mousePressEvent = partial(self.open_viewer, name, pixmap)
+
                 self.scroll_layout.addWidget(QLabel(name))
-                self.scroll_layout.addWidget(label)
-            else:
-                self.scroll_layout.addWidget(QLabel(f"{name}: (invalid image)"))
+                self.scroll_layout.addWidget(preview)
+    
+    def open_viewer(self, name, pixmap, event):
+        viewer = ImageViewer(name, pixmap)
+        viewer.exec_()  # ✅ Use exec_() instead of show()
+
+
+
+
 
 
 

@@ -17,6 +17,7 @@ import traceback
 from data.contract.MyContract import contractList
 from data.store import Store
 from analytics.Stats import Stats
+from analytics.Allocation import Allocation
 from datetime import datetime
 import mplcursors
 import yfinance as yf
@@ -29,19 +30,19 @@ import io
 store_host = 'host.docker.internal'
 
 # Helper to capture a matplotlib figure as base64
-def fig_to_base64(fig):
+def fig_to_base64(fig, dpi=300):
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=dpi)
     buf.seek(0)
     return base64.b64encode(buf.read()).decode("utf-8")
 
 class RollingPortfolioAnalyzer:
     def __init__(self, startdate: str, holdingPeriodYear: float = 0.25,
-                 rollingYr: float = 5, divTaxRate: float = 0.3):
+                 rollingYr: float = 5, divTaxRate: float = 0.3, store: Store = None):
         """
         Initialize analyzer: builds Stats, loads data, and precomputes returns/dividends/expenses.
         """
-        self.stats = Stats(startdate, holdingPeriodYear, rollingYr, divTaxRate)
+        self.stats = Stats(startdate, holdingPeriodYear, rollingYr, divTaxRate, store)
 
         # Preload all data
         self.stats.loadYC()
@@ -113,7 +114,7 @@ class RollingPortfolioAnalyzer:
         rolling_div_return = self.stats.rolling_div_return_list()
 
         def rolling_optimize(ret, div):
-            alloc = self.Allocation(self.stats, ret, div)
+            alloc = Allocation(self.stats, ret, div)
             alloc.preload(); alloc.optimize()
             return alloc
 
@@ -130,13 +131,13 @@ class RollingPortfolioAnalyzer:
         fig1, ax1 = plt.subplots()
         ratio_m.plot(ax=ax1)
         ax1.set_title(f"Ratio - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y window")
-        img_ratio = self._fig_to_base64(fig1); plt.close(fig1)
+        img_ratio = fig_to_base64(fig1); plt.close(fig1)
 
         # Plot allocation
         fig2, ax2 = plt.subplots()
         alloc_m.plot(ax=ax2)
         ax2.set_title(f"Alloc - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y window")
-        img_alloc = self._fig_to_base64(fig2); plt.close(fig2)
+        img_alloc = fig_to_base64(fig2); plt.close(fig2)
 
         return {"ratios": ratio_m.to_dict(), "allocations": alloc_m.to_dict(),
                 "images": {"ratio": img_ratio, "allocation": img_alloc}}
@@ -147,7 +148,7 @@ class RollingPortfolioAnalyzer:
         rolling_div_return = self.stats.rolling_div_return_list()
 
         def rolling_optimize(ret, div):
-            alloc = self.Allocation(self.stats, ret, div)
+            alloc = Allocation(self.stats, ret, div)
             alloc.preload(); alloc.optimize()
             return alloc
 
@@ -167,13 +168,13 @@ class RollingPortfolioAnalyzer:
         fig1, ax1 = plt.subplots()
         ratio_mean.plot(ax=ax1)
         ax1.set_title(f"Ratio - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y EMA")
-        img_ratio = self._fig_to_base64(fig1); plt.close(fig1)
+        img_ratio = fig_to_base64(fig1); plt.close(fig1)
 
         fig2, ax2 = plt.subplots()
         alloc_mean.plot(ax=ax2)
         ax2.set_title(f"Alloc - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y EMA")
         ax2.grid(True)
-        img_alloc = self._fig_to_base64(fig2); plt.close(fig2)
+        img_alloc = fig_to_base64(fig2); plt.close(fig2)
 
         return {"ratios": ratio_mean.to_dict(), "allocations": alloc_mean.to_dict(),
                 "images": {"ratio": img_ratio, "allocation": img_alloc}}
@@ -196,7 +197,7 @@ class RollingPortfolioAnalyzer:
         ax.set_xlabel("Date"); ax.set_ylabel("Correlation")
         ax.set_title("Rolling Correlation Between Stocks")
         ax.legend(); ax.grid(True)
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
 
         return {"corr_matrix": corr_matrix.to_dict(), "images": {"corr": img}}
 
@@ -217,7 +218,7 @@ class RollingPortfolioAnalyzer:
         ax.set_xlabel("stock"); ax.set_ylabel("date"); ax.set_zlabel("corr")
         ax.set_title("3D Rolling Correlation Between Stocks")
         ax.legend()
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
 
         return {"corr_matrix": corr_matrix.to_dict(), "images": {"corr_3d": img}}
 
@@ -230,7 +231,7 @@ class RollingPortfolioAnalyzer:
         fig, ax = plt.subplots(figsize=(13, 8))
         sns.heatmap(corr_matrix, annot=True, cmap="RdYlGn_r", ax=ax)
         ax.set_title("Mean of Exponential Weighted Moving Correlation")
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
 
         return {"corr_matrix": corr_matrix.to_dict(), "images": {"ewm_corr_avg": img}}
 
@@ -246,7 +247,7 @@ class RollingPortfolioAnalyzer:
             betas[t] = {benchmark: slope}
         betas_df = pd.DataFrame(betas).T
 
-        alloc = self.Allocation(self.stats, self.stats.returns, self.stats.div_return)
+        alloc = Allocation(self.stats, self.stats.returns, self.stats.div_return)
         alloc.preload()
         alpha_period = alloc.calc_period_alpha_capm(betas=betas_df, benchmark=benchmark)
 
@@ -260,7 +261,7 @@ class RollingPortfolioAnalyzer:
         ax.set_xlabel("Ticker"); ax.set_ylabel("Period Alpha")
         ax.tick_params(axis="x", rotation=45)
         plt.tight_layout()
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
 
         return {"alpha": alpha_period.to_dict(), "images": {"alpha": img}}
 
@@ -272,7 +273,7 @@ class RollingPortfolioAnalyzer:
             ret = window_ret.dropna()
             if ret.empty: continue
             div_ret_window = self.stats.div_return.loc[ret.index]
-            alloc = self.Allocation(self.stats, ret, div_ret_window)
+            alloc = Allocation(self.stats, ret, div_ret_window)
             alloc.preload()
             betas_w = {}
             for tkr in self.stats.recvTickers:
@@ -295,7 +296,7 @@ class RollingPortfolioAnalyzer:
         ax.set_xlabel("Date"); ax.set_ylabel("CAPM Alpha (period)")
         ax.legend(title="Ticker", bbox_to_anchor=(1.02, 1), loc="upper left")
         plt.tight_layout()
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
 
         return {"alpha_avg": alpha_avg.to_dict(), "images": {"alpha_avg": img}}
 
@@ -322,7 +323,7 @@ class RollingPortfolioAnalyzer:
         fig, ax = plt.subplots()
         rolling_avg.plot(ax=ax)
         ax.set_title("Rolling CAPM Beta")
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
 
         return {"beta_avg": rolling_avg.to_dict(), "images": {"beta_avg": img}}
 
@@ -331,7 +332,7 @@ class RollingPortfolioAnalyzer:
         var = self.stats.returns.dropna().rolling(window=int(self.stats.windowSize)).var() * self.stats.no_of_days
         fig, ax = plt.subplots()
         var.plot(ax=ax); ax.set_title("Rolling Variance")
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
         return {"var": var.to_dict(), "images": {"var": img}}
 
     def run_ewm_var(self):
@@ -339,7 +340,7 @@ class RollingPortfolioAnalyzer:
         var = self.stats.returns.ewm(span=int(self.stats.windowSize)).var() * self.stats.no_of_days
         fig, ax = plt.subplots()
         var.plot(ax=ax); ax.set_title("EWM Variance")
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
         return {"ewm_var": var.to_dict(), "images": {"ewm_var": img}}
 
     def run_std(self):
@@ -357,7 +358,7 @@ class RollingPortfolioAnalyzer:
                              index=[d for d, _ in rolling_std])
         fig, ax = plt.subplots()
         std_m.plot(ax=ax); ax.set_title("Rolling Std")
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
         return {"std": std_m.to_dict(), "images": {"std": img}}
 
     def run_std_avg(self):
@@ -381,5 +382,5 @@ class RollingPortfolioAnalyzer:
         std_avg.plot(ax=ax)
         ax.set_title(f"Rolling Risk in a {self.stats.holdingPeriodYear}-Y holding Period")
         ax.grid(True)
-        img = self._fig_to_base64(fig); plt.close(fig)
+        img = fig_to_base64(fig); plt.close(fig)
         return {"std_avg": std_avg.to_dict(), "images": {"std_avg": img}}

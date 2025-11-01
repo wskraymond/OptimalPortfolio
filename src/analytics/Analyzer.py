@@ -249,7 +249,7 @@ class RollingPortfolioAnalyzer:
 
         alloc = Allocation(self.stats, self.stats.returns, self.stats.div_return)
         alloc.preload()
-        alpha_period = alloc.calc_period_alpha_capm(betas=betas_df, benchmark=benchmark)
+        alpha_period, E_period = alloc.calc_period_alpha_capm(betas=betas_df, benchmark=benchmark)
 
         alpha_df = alpha_period.rename("alpha").to_frame().reset_index()
         alpha_df.columns = ["ticker", "alpha"]
@@ -263,7 +263,7 @@ class RollingPortfolioAnalyzer:
         plt.tight_layout()
         img = fig_to_base64(fig); plt.close(fig)
 
-        return {"alpha": alpha_period.to_dict(), "images": {"alpha": img}}
+        return {"CAPM":E_period.to_dict(), "beta": betas_df.to_dict(), "alpha": alpha_period.to_dict(), "images": {"alpha": img}}
 
     def run_alpha_avg(self, benchmark="VOO"):
         """Rolling CAPM alpha smoothed with EMA."""

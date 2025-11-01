@@ -179,7 +179,7 @@ class PortfolioVisualizer(QMainWindow):
 
         self.tabs.addTab(self.allocation_tab, "Allocation")
         self.tabs.addTab(self.beta_tab, "Beta")
-        self.tabs.addTab(self.corr_tab, "Correlation")
+        self.tabs.addTab(self.corr_tab, "covariance")
         self.tabs.addTab(self.analyzer_tab, "Analyzer")
 
         self._build_allocation_tab()
@@ -214,7 +214,7 @@ class PortfolioVisualizer(QMainWindow):
 
     def refresh_data_and_render(self):
         pos = self._fetch_json("positions")
-        cor = self._fetch_json("correlation")
+        cor = self._fetch_json("covariance")
         bet = self._fetch_json("betas")
         tan = self._fetch_json("tangent")
         risk = self._fetch_json("risk")
@@ -411,7 +411,7 @@ class PortfolioVisualizer(QMainWindow):
 
     def _build_corr_tab(self):
         layout = QVBoxLayout()
-        header = self._build_header("Correlation heatmap", self.refresh_data_and_render)
+        header = self._build_header("Covariance heatmap", self.refresh_data_and_render)
         layout.addLayout(header)
 
         self.corr_fig, self.corr_ax = plt.subplots(figsize=(9,7))
@@ -430,33 +430,43 @@ class PortfolioVisualizer(QMainWindow):
         self.corr_fig.clf()
         self.corr_ax = self.corr_fig.add_subplot(111)
 
-        if self.corr_df.empty:
-            self.corr_ax.text(0.5, 0.5, "No correlation data", ha="center", va="center")
-        else:
-            sns.heatmap(self.corr_df, cmap="coolwarm", vmin=-1, vmax=1,
-                        ax=self.corr_ax, linewidths=0.3)
-            self.corr_ax.set_title("Ticker correlation matrix")
+        cor = self._fetch_json("covariance")
+        if not cor or "matrix" not in cor:
+            self.corr_ax.text(0.5, 0.5, "No covariance data", ha="center", va="center")
+            self.corr_canvas.draw_idle()
+            return
 
+        tickers = cor["tickers"]
+        matrix = cor["matrix"]
+        hpr = cor.get("weighted_hpr", {})
+
+        # Build DataFrame for heatmap
+        self.corr_df = pd.DataFrame(matrix, index=tickers, columns=tickers)
+
+        # Dynamic scaling for covariance values
+        vmin = self.corr_df.min().min()
+        vmax = self.corr_df.max().max()
+
+        sns.heatmap(self.corr_df, cmap="coolwarm", vmin=vmin, vmax=vmax,
+                    ax=self.corr_ax, linewidths=0.3)
+        self.corr_ax.set_title("Weighted covariance matrix")
         self.corr_canvas.draw_idle()
 
-        # Render Weighted HPR table (unchanged)
-        cor = self._fetch_json("correlation")
-        if cor and "weighted_hpr" in cor:
-            tickers = cor["tickers"]
-            hpr = cor["weighted_hpr"]
+        # Weighted HPR table
+        self.hpr_table.clear()
+        self.hpr_table.setRowCount(1)
+        self.hpr_table.setColumnCount(len(tickers))
+        self.hpr_table.setHorizontalHeaderLabels(tickers)
 
-            self.hpr_table.clear()
-            self.hpr_table.setRowCount(1)
-            self.hpr_table.setColumnCount(len(tickers))
-            self.hpr_table.setHorizontalHeaderLabels(tickers)
+        for j, t in enumerate(tickers):
+            val = hpr.get(t, 0.0)
+            item = QTableWidgetItem(f"{val:.6f}")
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
+            self.hpr_table.setItem(0, j, item)
 
-            for j, t in enumerate(tickers):
-                val = hpr.get(t, 0.0)
-                item = QTableWidgetItem(f"{val:.6f}")
-                item.setFlags(item.flags() | Qt.ItemIsEditable)
-                self.hpr_table.setItem(0, j, item)
+        self.hpr_table.resizeColumnsToContents()
 
-            self.hpr_table.resizeColumnsToContents()
+
 
 
 

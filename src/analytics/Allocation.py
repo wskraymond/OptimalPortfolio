@@ -89,9 +89,20 @@ class Allocation():
             ds = std * scalar
             var[self.stat.recvTickers[i]] = ds
 
+        self.std = std
+        self.var = var
         self.corr = self.returns.corr()
         self.cov = self.corr * var
         self.hpr = np.subtract(total_HPR_1, 1)
+
+    def weighted_cov(self, weights: pd.Series) -> pd.DataFrame:
+        """
+        Return Excel-style weighted covariance matrix:
+        Cov(i,j) = σ_i * σ_j * ρ_ij * w_i * w_j
+        """
+        weights = weights.reindex(self.cov.columns).fillna(0)
+        w_outer = np.outer(weights, weights)
+        return self.cov * w_outer
 
     def gen_ret_vol_sr_func(self):
         def get_ret_vol_sr(weights):
@@ -195,4 +206,4 @@ class Allocation():
         # 5. Period CAPM alpha
         alpha_period = R_period - E_period
 
-        return alpha_period
+        return alpha_period, E_period

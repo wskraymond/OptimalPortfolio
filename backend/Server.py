@@ -149,7 +149,7 @@ def risk():
     ret, vol, sr = alloc.gen_ret_vol_sr_func()(weights)
 
     # Portfolio beta
-    benchmark = getattr(alloc, "benchmark", "VOO")
+    benchmark = "VOO"
     betas_result = analyzer.run_alpha(benchmark=benchmark)
     flat_betas = betas_result["beta"].get(benchmark, {})
     portfolio_beta = sum(
@@ -174,13 +174,10 @@ def risk():
     var99 = -z99 * vol * portfolio_value
 
     # --- M² Alpha ---
-    Rm = analyzer.stats.returns[benchmark].mean()  # benchmark return
-    sigma_m = alloc.std[alloc.cov.columns.get_loc(benchmark)]  # benchmark volatility
-    M2 = Rf + (ret - Rf) / vol * sigma_m if vol > 0 else None
-    M2_alpha = M2 - Rm if M2 is not None else None
+    M2, M2_alpha = alloc.calc_period_m2_alpha(weights, benchmark=benchmark)
 
     return jsonify({
-        "Subtotal Covariance": float(weights.T @ alloc.cov.values @ weights),
+        "Total Covariance": float(weights.T @ alloc.cov.values @ weights),
         "Portfolio Risk(%)": vol * 100,
         "Non-Systematic Var": non_sys_var,
         "Non-Systematic Risk(%)": non_sys_risk * 100,
@@ -278,8 +275,8 @@ def pre_start_init():
 
     global analyzer
     analyzer = RollingPortfolioAnalyzer(
-        startdate="01/05/2015",
-        holdingPeriodYear=0.25,
+        startdate="01/01/2016",
+        holdingPeriodYear=1,
         rollingYr=5,
         divTaxRate=0.3,
         store=store

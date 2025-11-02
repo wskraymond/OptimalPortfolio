@@ -174,6 +174,32 @@ class Allocation():
         dict.update(a)
         return dict
     
+    def calc_period_m2_alpha(self,
+                           weights,
+                           benchmark: str = 'VOO') -> float:
+        """
+        Compute M² Alpha over the holding period (no annualization):
+        M² Alpha = Rf + (R_p − Rf) / σ_p * σ_m − R_m
+        """
+        ret, vol, sr = self.gen_ret_vol_sr_func()(weights)
+        R_p = ret
+        σ_p = vol
+        Rf = self.single_period_margin_rate
+
+        # Market’s realized return over the holding period
+        Rm = self.hpr[benchmark]
+
+        # Market volatility
+        sigma_m = self.std[self.cov.columns.get_loc(benchmark)]
+
+        # M² Alpha calculation
+        if σ_p > 0:
+            M2 = Rf + (R_p - Rf) / σ_p * sigma_m
+            M2_alpha = M2 - Rm
+            return M2, M2_alpha
+        else:
+            return None, None
+    
     def calc_period_alpha_capm(self,
                            betas: pd.DataFrame,
                            benchmark: str = 'VOO') -> pd.Series:
@@ -190,7 +216,6 @@ class Allocation():
 
         # 1. Realized period return (array of holding‐period returns)
         R_period = pd.Series(self.hpr, index=tickers)
-        print("R_period=", R_period)
 
         # 2. Risk‐free return over the same holding period
         rf_period = self.single_period_margin_rate

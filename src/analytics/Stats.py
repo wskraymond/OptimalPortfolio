@@ -19,9 +19,6 @@ from data.store import Store
 from datetime import datetime
 import mplcursors
 import yfinance as yf
-from yahooquery import Ticker
-from ibapi.contract import Contract
-from scipy import stats as ss
 
 store_host = 'host.docker.internal'
 
@@ -125,24 +122,39 @@ class Stats():
 
 
     def load_div_expense(self):
+        """
+        Refactored method to load dividend and expense ratio data directly from the Cassandra store.
+        """
         global contractList
         self.div = pd.DataFrame(index=self.Closeprice.index)
-        symbols = [i.symbol for i in contractList]
-        print("Fetching expense ratios for symbols:", symbols)
-        etfs = Ticker(" ".join(symbols))
+        self.expense_ratio = pd.Series(dtype=float)
 
-        for i in contractList:
+        for contract in contractList:
             try:
-                print(f"Processing {i.symbol}")
-                div = self.safe_get_dividends(i.symbol)
-                self.div[i.symbol] = div
-                self.expense_ratio.loc[i.symbol] = self.get_expense_ratio(i.symbol, etfs)
-                time.sleep(1)
-            except Exception as error:
-                print("An error occurred:", error)
-                traceback.print_exc()
-                print("symbol=", i.symbol, " cannot be resolved")
+                print(f"Loading data for {contract.symbol}")
 
+                # Fetch dividend data from the store
+                div_data = self.store.select_dividends_in_pd_by_range(
+                    ticker=contract.symbol,
+                    fromDate=self.fromDate,
+                    toDate=dt.date.today()
+                )
+
+                # Fetch expense ratio data from the store
+                expense_ratio_data = self.store.select_fund(contract.symbol).expense_ratio
+
+                # Populate the DataFrame with dividend data
+                if not div_data.empty:
+                    self.div[contract.symbol] = div_data['amount']
+
+                # Populate the Series with expense ratio data
+                self.expense_ratio.loc[contract.symbol] = expense_ratio_data
+
+            except Exception as error:
+                print(f"An error occurred while processing {contract.symbol}: {error}")
+                traceback.print_exc()
+
+        # Ensure dividend data aligns with the date range and fill missing values
         self.div = self.div[self.div.index >= pd.to_datetime(self.fromDate)]
         self.div = self.div.fillna(0.0)
 

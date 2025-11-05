@@ -15,7 +15,7 @@ from datetime import datetime
 from cassandra.cqlengine.management import sync_table, drop_table
 from cassandra.cqlengine.models import Model
 
-from data.model.daily_price import DailyPrice, Currency, Portfolio
+from data.model.daily_price import DailyPrice, Currency, Portfolio, Fund, Dividend
 import pandas as pd
 
 class Store:
@@ -23,6 +23,8 @@ class Store:
         connection.setup(hosts=hosts, default_keyspace=keyspace, protocol_version=3)
         sync_table(DailyPrice)
         sync_table(Portfolio)
+        sync_table(Fund)
+        sync_table(Dividend)
 
     def drop_daily_price_table(self):
         drop_table(DailyPrice)
@@ -161,12 +163,104 @@ class Store:
         tmp.set_index('ticker', inplace=True, drop=True)
         return tmp
 
+    # --- CRUD Operations for Fund ---
+    def insert_fund(self, ticker, expense_ratio, created_at=None, updated_at=None):
+        if created_at is None:
+            created_at = datetime.now()
+        if updated_at is None:
+            updated_at = datetime.now()
+
+        Fund.create(
+            ticker=ticker,
+            expense_ratio=expense_ratio,
+            created_at=created_at,
+            updated_at=updated_at
+        )
+
+    def select_fund(self, ticker):
+        return Fund.objects(ticker=ticker).first()
+
+    def update_fund(self, ticker, **kwargs):
+        fund = self.select_fund(ticker)
+        if fund:
+            for key, value in kwargs.items():
+                setattr(fund, key, value)
+            fund.updated_at = datetime.now()
+            fund.save()
+
+    def delete_fund(self, ticker):
+        fund = self.select_fund(ticker)
+        if fund:
+            fund.delete()
+
+    def select_all_funds(self):
+        return Fund.objects()
+
+    def select_all_funds_in_pd(self):
+        rows = self.select_all_funds()
+        tmp = pd.DataFrame.from_records([x.toMap() for x in rows])
+        tmp.set_index('ticker', inplace=True, drop=True)
+        return tmp
+
+    # --- CRUD Operations for Dividend ---
+    def insert_dividend(self, ticker, date, amount, created_at=None, updated_at=None):
+        if created_at is None:
+            created_at = datetime.now()
+        if updated_at is None:
+            updated_at = datetime.now()
+
+        Dividend.create(
+            ticker=ticker,
+            date=date,
+            amount=amount,
+            created_at=created_at,
+            updated_at=updated_at
+        )
+
+    def select_dividend(self, ticker, date):
+        return Dividend.objects(ticker=ticker, date=date).first()
+
+    def update_dividend(self, ticker, date, **kwargs):
+        dividend = self.select_dividend(ticker, date)
+        if dividend:
+            for key, value in kwargs.items():
+                setattr(dividend, key, value)
+            dividend.updated_at = datetime.now()
+            dividend.save()
+
+    def delete_dividend(self, ticker, date):
+        dividend = self.select_dividend(ticker, date)
+        if dividend:
+            dividend.delete()
+
+    def select_dividends_by_ticker(self, ticker):
+        return Dividend.objects(ticker=ticker).all()
+
+    def select_dividends_by_ticker_in_pd(self, ticker):
+        rows = self.select_dividends_by_ticker(ticker)
+        tmp = pd.DataFrame.from_records([x.toMap() for x in rows])
+        tmp.set_index('date', inplace=True, drop=True)
+        return tmp
+
+    def select_dividends_in_pd_by_range(self, ticker, fromDate, toDate):
+        rows = Dividend.objects.filter(ticker=ticker) \
+            .filter(Dividend.date >= fromDate) \
+            .filter(Dividend.date <= toDate) \
+            .order_by('date') \
+            .all()
+
+        if not rows:
+            # Return an empty DataFrame with the expected columns if no data is found
+            return pd.DataFrame(columns=['ticker', 'date', 'amount', 'created_at', 'updated_at'])
+
+        tmp = pd.DataFrame.from_records([x.toMap() for x in rows])
+        tmp.set_index('date', inplace=True, drop=True)
+        return tmp
 
 
 
-    
 
 
-    
+
 
 

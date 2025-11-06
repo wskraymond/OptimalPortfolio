@@ -23,9 +23,6 @@ def load_div_expense_to_store(contract_list, from_date):
     symbols = [contract.symbol for contract in contract_list]
     print("Fetching expense ratios and dividends for symbols:", symbols)
 
-    # Fetch ETF data using YahooQuery
-    etfs = Ticker(" ".join(symbols))
-
     for contract in contract_list:
         try:
             symbol = contract.symbol
@@ -42,7 +39,7 @@ def load_div_expense_to_store(contract_list, from_date):
                     )
 
             # Fetch and load fund expense ratio
-            expense_ratio = get_expense_ratio(symbol, etfs)
+            expense_ratio = get_expense_ratio(symbol)
             store.insert_fund(
                 ticker=symbol,
                 expense_ratio=expense_ratio
@@ -81,7 +78,7 @@ def safe_get_dividends(symbol, retries=3, delay=2):
 
     return pd.Series()
 
-def get_expense_ratio(symbol, etfs):
+def get_expense_ratio(symbol) -> float:
     """
     Fetch the expense ratio for a given symbol.
 
@@ -93,11 +90,14 @@ def get_expense_ratio(symbol, etfs):
         float: Expense ratio, or 0.0 if not available.
     """
     try:
-        print(f"fund: {etfs.fund_profile[symbol]}")
-        if symbol in etfs.fund_profile and 'feesExpensesInvestment' in etfs.fund_profile[symbol]:
-            return etfs.fund_profile[symbol]['feesExpensesInvestment'].get('annualReportExpenseRatio', 0.0)
+        # Fetch ETF data using YahooQuery
+        etf = Ticker(symbol)
+        if symbol in etf.fund_profile and 'feesExpensesInvestment' in etf.fund_profile[symbol]:
+            return etf.fund_profile[symbol]['feesExpensesInvestment'].get('annualReportExpenseRatio', 0.0)
     except Exception as e:
         print(f"Failed to fetch expense ratio for {symbol}: {e}")
+
+
 
     return 0.0
 

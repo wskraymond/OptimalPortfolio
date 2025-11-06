@@ -275,7 +275,7 @@ def pre_start_init():
 
     global analyzer
     analyzer = RollingPortfolioAnalyzer(
-        startdate="01/01/2016",
+        startdate="01/01/2020",
         holdingPeriodYear=1,
         rollingYr=5,
         divTaxRate=0.3,

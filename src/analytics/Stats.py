@@ -52,23 +52,6 @@ class Stats():
         # print(yc)
         self.yc = yc
 
-    """ def get_expense_ratio(self, ticker, etf):
-        if ticker in etf.fund_profile and 'feesExpensesInvestment' in etf.fund_profile[
-            ticker] and 'annualReportExpenseRatio' in etf.fund_profile[ticker]['feesExpensesInvestment']:
-            # Both columns exist
-            expense_ratio = etf.fund_profile[ticker]['feesExpensesInvestment']['annualReportExpenseRatio']
-        else:
-            # Either or both columns do not exist
-            expense_ratio = 0.0
-        return expense_ratio """
-    
-    def get_expense_ratio(self, ticker, etf):
-        try:
-            return etf.fund_profile[ticker]['feesExpensesInvestment']['annualReportExpenseRatio']
-        except (KeyError, TypeError):
-            return 0.0
-
-
     def loadDailyPrice(self):
         global contractList
         for i in contractList:
@@ -85,41 +68,6 @@ class Stats():
                 print("symbol=", i.symbol, " cannot be resolved")
         # https://pandas.pydata.org/docs/user_guide/timeseries.html
         self.Closeprice.index = pd.to_datetime(self.Closeprice.index).tz_localize(None)
-
-    """ def load_div_expense(self):
-        self.div = pd.DataFrame(index=self.Closeprice.index)
-        for i in contractList:
-            try:
-                print(i.symbol)
-                corp_action = yf.Ticker(i.symbol)
-                div = corp_action.get_dividends()
-                if not div.empty:
-                    div.index = div.index.tz_localize(None)
-                self.div[i.symbol] = div
-                etf = Ticker(i.symbol)
-                self.expense_ratio.loc[i.symbol] = self.get_expense_ratio(i.symbol, etf)
-                time.sleep(3)  # to avoid being rate limited by yahoo
-            except Exception as error:
-                print("An error occurred:", error)
-                traceback.print_exc()
-                print("symbol=", i.symbol, " cannot be resolved")
-        # https://pandas.pydata.org/docs/user_guide/timeseries.html
-        self.div = self.div[pd.to_datetime(self.fromDate) <= self.div.index]
-        self.div = self.div.fillna(0.0) """
-
-    def safe_get_dividends(self, symbol, retries=3, delay=2):
-        for attempt in range(retries):
-            try:
-                div = yf.Ticker(symbol).get_dividends()
-                if not div.empty:
-                    div.index = div.index.tz_localize(None)
-                return div
-            except Exception as e:
-                print(f"Retry {attempt+1} for {symbol}: {e}")
-                time.sleep(delay)
-                delay *= 2
-        return pd.Series()
-
 
     def load_div_expense(self):
         """

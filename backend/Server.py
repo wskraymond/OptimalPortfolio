@@ -150,8 +150,8 @@ def risk():
 
     # Portfolio beta
     benchmark = "VOO"
-    betas_result = analyzer.run_alpha(benchmark=benchmark)
-    flat_betas = betas_result["beta"].get(benchmark, {})
+    beta_alpha = analyzer.run_alpha(benchmark=benchmark)
+    flat_betas = beta_alpha["beta"].get(benchmark, {})
     portfolio_beta = sum(
         (df["market_value"].get(t, 0) / portfolio_value) * b
         for t, b in flat_betas.items()

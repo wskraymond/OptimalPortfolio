@@ -234,10 +234,51 @@ class PortfolioVisualizer(QMainWindow):
         self.render_beta()
         self.render_corr()
 
+    def _refresh_allocation_with_params(self):
+        params = {
+            "startdate": self.startdate_input.text(),
+            "holdingPeriodYear": self.holding_input.currentText(),
+            "rollingYr": self.rolling_input.currentText(),
+            "divTaxRate": self.tax_input.currentText()
+        }
+
+        # Send to backend
+        response = requests.post(f"{API_BASE}/update_params", json=params)
+        if response.ok:
+            self.refresh_data_and_render()
+
+
     def _build_allocation_tab(self):
         layout = QVBoxLayout()
         self.alloc_header = self._build_header("Portfolio allocation", self.refresh_data_and_render)
         layout.addLayout(self.alloc_header)
+
+        # --- Parameter input bar ---
+        param_bar = QHBoxLayout()
+
+        self.startdate_input = QLineEdit("01/01/2020")
+        self.holding_input = QComboBox()
+        self.holding_input.addItems(["0.25", "1", "2", "5", "10"])
+        self.rolling_input = QComboBox()
+        self.rolling_input.addItems(["0.25", "1", "2", "5", "10"])
+        self.tax_input = QComboBox()
+        self.tax_input.addItems(["0.0", "0.15", "0.3"])
+
+        param_bar.addWidget(QLabel("Start Date"))
+        param_bar.addWidget(self.startdate_input)
+        param_bar.addWidget(QLabel("Holding Period (yrs)"))
+        param_bar.addWidget(self.holding_input)
+        param_bar.addWidget(QLabel("Rolling Window (yrs)"))
+        param_bar.addWidget(self.rolling_input)
+        param_bar.addWidget(QLabel("Div Tax Rate"))
+        param_bar.addWidget(self.tax_input)
+
+        layout.addLayout(param_bar)
+
+        # --- Refresh button ---
+        enter_btn = QPushButton("enter")
+        enter_btn.clicked.connect(self._refresh_allocation_with_params)
+        layout.addWidget(enter_btn)
 
         # --- Top half: two pie charts side by side ---
         chart_layout = QHBoxLayout()

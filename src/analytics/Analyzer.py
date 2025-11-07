@@ -139,8 +139,7 @@ class RollingPortfolioAnalyzer:
         ax2.set_title(f"Alloc - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y window")
         img_alloc = fig_to_base64(fig2); plt.close(fig2)
 
-        return {"ratios": ratio_m.to_dict(), "allocations": alloc_m.to_dict(),
-                "images": {"ratio": img_ratio, "allocation": img_alloc}}
+        return {"images": {"ratio": img_ratio, "allocation": img_alloc}}
 
     def run_optimal_avg(self):
         """Smoothed optimal allocations (cmd == 'o_avg')."""
@@ -176,8 +175,7 @@ class RollingPortfolioAnalyzer:
         ax2.grid(True)
         img_alloc = fig_to_base64(fig2); plt.close(fig2)
 
-        return {"ratios": ratio_mean.to_dict(), "allocations": alloc_mean.to_dict(),
-                "images": {"ratio": img_ratio, "allocation": img_alloc}}
+        return {"images": {"ratio": img_ratio, "allocation": img_alloc}}
 
     def run_corr(self):
         """Rolling correlation time series (cmd == 'corr')."""
@@ -199,7 +197,7 @@ class RollingPortfolioAnalyzer:
         ax.legend(); ax.grid(True)
         img = fig_to_base64(fig); plt.close(fig)
 
-        return {"corr_matrix": corr_matrix.to_dict(), "images": {"corr": img}}
+        return {"images": {"corr": img}}
 
     def run_corr_3d(self):
         """3D rolling correlation (cmd == 'corr_3d')."""
@@ -220,7 +218,7 @@ class RollingPortfolioAnalyzer:
         ax.legend()
         img = fig_to_base64(fig); plt.close(fig)
 
-        return {"corr_matrix": corr_matrix.to_dict(), "images": {"corr_3d": img}}
+        return {"images": {"corr_3d": img}}
 
     def run_ewm_corr_avg(self):
         """Exponentially weighted moving average correlation (cmd == 'ewm_corr_avg')."""
@@ -233,7 +231,7 @@ class RollingPortfolioAnalyzer:
         ax.set_title("Mean of Exponential Weighted Moving Correlation")
         img = fig_to_base64(fig); plt.close(fig)
 
-        return {"corr_matrix": corr_matrix.to_dict(), "images": {"ewm_corr_avg": img}}
+        return {"images": {"ewm_corr_avg": img}}
 
 
     def run_alpha(self, benchmark="VOO"):
@@ -263,7 +261,7 @@ class RollingPortfolioAnalyzer:
         plt.tight_layout()
         img = fig_to_base64(fig); plt.close(fig)
 
-        return {"CAPM":E_period.to_dict(), "beta": betas_df.to_dict(), "alpha": alpha_period.to_dict(), "images": {"alpha": img}}
+        return {"images": {"alpha": img}}
 
     def run_alpha_avg(self, benchmark="VOO"):
         """Rolling CAPM alpha smoothed with EMA."""
@@ -271,7 +269,8 @@ class RollingPortfolioAnalyzer:
         rolling_alpha = []
         for window_ret in rolling_return:
             ret = window_ret.dropna()
-            if ret.empty: continue
+            if ret.empty: 
+                continue
             div_ret_window = self.stats.div_return.loc[ret.index]
             alloc = Allocation(self.stats, ret, div_ret_window)
             alloc.preload()
@@ -282,7 +281,7 @@ class RollingPortfolioAnalyzer:
                 slope, _, _, _, _ = ss.linregress(x, y)
                 betas_w[tkr] = {benchmark: slope}
             betas_df_w = pd.DataFrame(betas_w).T
-            alpha_w = alloc.calc_period_alpha_capm(betas=betas_df_w, benchmark=benchmark)
+            alpha_w, expected = alloc.calc_period_alpha_capm(betas=betas_df_w, benchmark=benchmark)
             rolling_alpha.append((ret.index[-1], alpha_w))
 
         alpha_matrix = pd.DataFrame([a for _, a in rolling_alpha],
@@ -298,7 +297,7 @@ class RollingPortfolioAnalyzer:
         plt.tight_layout()
         img = fig_to_base64(fig); plt.close(fig)
 
-        return {"alpha_avg": alpha_avg.to_dict(), "images": {"alpha_avg": img}}
+        return {"images": {"alpha_avg": img}}
 
     def run_beta_avg(self, benchmark="VOO"):
         """Rolling CAPM beta smoothed with EMA."""
@@ -325,7 +324,7 @@ class RollingPortfolioAnalyzer:
         ax.set_title("Rolling CAPM Beta")
         img = fig_to_base64(fig); plt.close(fig)
 
-        return {"beta_avg": rolling_avg.to_dict(), "images": {"beta_avg": img}}
+        return {"images": {"beta_avg": img}}
 
     def run_var(self):
         """Rolling variance annualized."""
@@ -333,7 +332,8 @@ class RollingPortfolioAnalyzer:
         fig, ax = plt.subplots()
         var.plot(ax=ax); ax.set_title("Rolling Variance")
         img = fig_to_base64(fig); plt.close(fig)
-        return {"var": var.to_dict(), "images": {"var": img}}
+
+        return {"images": {"var": img}}
 
     def run_ewm_var(self):
         """Exponentially weighted variance annualized."""
@@ -341,7 +341,8 @@ class RollingPortfolioAnalyzer:
         fig, ax = plt.subplots()
         var.plot(ax=ax); ax.set_title("EWM Variance")
         img = fig_to_base64(fig); plt.close(fig)
-        return {"ewm_var": var.to_dict(), "images": {"ewm_var": img}}
+
+        return {"images": {"ewm_var": img}}
 
     def run_std(self):
         """Rolling custom std measure."""
@@ -359,7 +360,8 @@ class RollingPortfolioAnalyzer:
         fig, ax = plt.subplots()
         std_m.plot(ax=ax); ax.set_title("Rolling Std")
         img = fig_to_base64(fig); plt.close(fig)
-        return {"std": std_m.to_dict(), "images": {"std": img}}
+
+        return {"images": {"std": img}}
 
     def run_std_avg(self):
         """Smoothed rolling std measure."""
@@ -383,4 +385,5 @@ class RollingPortfolioAnalyzer:
         ax.set_title(f"Rolling Risk in a {self.stats.holdingPeriodYear}-Y holding Period")
         ax.grid(True)
         img = fig_to_base64(fig); plt.close(fig)
-        return {"std_avg": std_avg.to_dict(), "images": {"std_avg": img}}
+
+        return {"images": {"std_avg": img}}

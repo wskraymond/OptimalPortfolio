@@ -192,6 +192,16 @@ def risk():
         "Value At Risk 99%": var99
     })
 
+@app.post("/api/update_params")
+def update_params():
+    data = request.get_json()
+    startdate = data.get("startdate", "01/01/2020")
+    holdingPeriodYear = float(data.get("holdingPeriodYear", 1))
+    rollingYr = int(data.get("rollingYr", 5))
+    divTaxRate = float(data.get("divTaxRate", 0.3))
+
+    init_analyzer(startdate, holdingPeriodYear, rollingYr, divTaxRate)
+    return jsonify({"status": "analyzer reinitialized"})
 
 
 
@@ -259,6 +269,19 @@ def create_contract_from_portfolio_row(row):
     contract.currency = row['currency']['code']
     return contract
 
+# Global analyzer instance
+analyzer = None
+
+def init_analyzer(startdate="01/01/2020", holdingPeriodYear=1, rollingYr=5, divTaxRate=0.3):
+    global analyzer
+    analyzer = RollingPortfolioAnalyzer(
+        startdate=startdate,
+        holdingPeriodYear=holdingPeriodYear,
+        rollingYr=rollingYr,
+        divTaxRate=divTaxRate,
+        store=store
+    )
+
 def pre_start_init():
     print("Initializing resources...")
     # Append first portfolio contract to global list
@@ -273,14 +296,7 @@ def pre_start_init():
     print("contractList=", contractList)
     # Load config, connect to DB, etc.
 
-    global analyzer
-    analyzer = RollingPortfolioAnalyzer(
-        startdate="01/01/2020",
-        holdingPeriodYear=1,
-        rollingYr=5,
-        divTaxRate=0.3,
-        store=store
-    )
+    init_analyzer()
 
 if __name__ == "__main__":
     pre_start_init()

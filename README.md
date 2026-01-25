@@ -1,5 +1,11 @@
 # Optimal Portfolio
 
+## Dashbaord (PyQt)
+![alt text](doc/Dashboard_allocation_tab.png?raw=true "Allocation Tab")
+
+![alt text](doc/Dashboard_analyzer_tab.png?raw=true "Analyzer Tab")
+
+
 ## Features
 0. S&P Stock List
 1. Price Risk using stock adjusted close price from market data source ( IB Data Or Tiingo)

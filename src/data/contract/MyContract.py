@@ -95,14 +95,14 @@ CL.currency = "USD"
 contractList = [
     # VOO,
     QQQ,
-    BRK,
-    GLD,
+    #BRK,
+    #GLD,
     # DBC,  # Commodities
     # TLT,  # Duration = 16
     # BND,  # Duration = 6
     # VNQ,  # REIT ETF
     # SPHD,  # Div ETF
-    AAPL,
-    CL,    #Div Stock
-    SPY
+    #AAPL,
+    #CL,    #Div Stock
+    #SPY
 ]

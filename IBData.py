@@ -10,7 +10,14 @@ import time
 import threading
 import collections
 
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
+
+
+print("IB Data starts")
 port = 4001
+ib_host = 'host.docker.internal'
+store_host = 'host.docker.internal'
 
 DailyPriceData = collections.namedtuple('DailyPriceData', ['ticker',
                                                            'date',
@@ -28,7 +35,9 @@ class TestApp(EClient, EWrapper):
     def __init__(self):
         EClient.__init__(self, self)
         self.data = {}
+        self.portfolio_data = []
         self.orderId = 0
+        self.store = Store(hosts=[store_host], keyspace='store')
 
     def nextValidId(self, orderId: OrderId):
         self.orderId = orderId
@@ -37,12 +46,56 @@ class TestApp(EClient, EWrapper):
         self.orderId += 1
         return self.orderId
 
-    def error(self, reqId, errorCode, errorString, advancedOrderReject):
-        print(f"reqId: {reqId}, errorCode: {errorCode}, errorString: {errorString}, orderReject: {advancedOrderReject}")
+    def error(self, reqId, errorCode, errorString,
+              advancedOrderReject=None, errorTime=None):
+        print(f"reqId: {reqId}, errorCode: {errorCode}, "
+              f"errorString: {errorString}, "
+              f"orderReject: {advancedOrderReject}, "
+              f"errorTime: {errorTime}")
+        
+
+    from ibapi.contract import Contract
+    def updatePortfolio(self, contract: Contract, position: float, marketPrice: float, marketValue: float,
+                        averageCost: float, unrealizedPNL: float, realizedPNL: float, accountName: str):
+        print("UpdatePortfolio.",
+              "Symbol:", contract.symbol,
+              "SecType:", contract.secType,
+              "Exchange:", contract.exchange,
+              "Position:", position,
+              "MarketPrice:", marketPrice,
+              "MarketValue:", marketValue,
+              "AverageCost:", averageCost,
+              "UnrealizedPNL:", unrealizedPNL,
+              "RealizedPNL:", realizedPNL,
+              "AccountName:", accountName)
+
+        self.portfolio_data.append({
+            'ticker': contract.symbol,
+            'account_id': accountName,
+            'position_type': 'Long' if position >= 0 else 'Short',
+            'qty': int(position),
+            'price': marketPrice,
+            'market_value': marketValue,
+            'avg_cost': averageCost,
+            'currency': {
+                'code': contract.currency,
+                'country': contract.exchange
+            }
+        })
+
+        global contractList
+        if contract.secType in ["STK", "ETF"]:
+            contract.exchange = "SMART"
+            contractList.append(contract)
+
+    def accountDownloadEnd(self, account: str):
+        print(f"Account download complete for {account}")
+        self.store.batch_insert_portfolio(self.portfolio_data)
+
 
     def historicalData(self, reqId: int, bar: BarData):
-        print(reqId, bar)
         mycontract = reqId_contract_map[reqId]
+        # print(mycontract.symbol, bar)
         if reqId not in self.data:
             self.data[reqId] = []
         self.data[reqId].append(DailyPriceData(ticker=mycontract.symbol,
@@ -56,30 +109,35 @@ class TestApp(EClient, EWrapper):
                                                ))
 
     def historicalDataEnd(self, reqId, start, end):
-        print(f"Historical Data Ended for {reqId}. Started at {start}, ending at {end}")
+        mycontract = reqId_contract_map[reqId]
+        print(f"Historical Data Ended for {mycontract.symbol}. Started at {start}, ending at {end}")
         # print(self.data)
-
-        store = Store(hosts=['127.0.0.1'], keyspace='store')
-        store.batch_insert_daily_price(self.data[reqId])
+        self.store.batch_insert_daily_price(self.data[reqId])
+        global latch
         latch.count_down()
         return super().historicalDataEnd(reqId, start, end)
 
     def clear(self):
         self.data.clear()
 
-
-latch = CountDownLatch(len(contractList))
 app = TestApp()
-app.connect("127.0.0.1", port, 0)
-threading.Thread(target=app.run).start()
-time.sleep(3)
+app.connect(ib_host, port, clientId=1)
+threading.Thread(target=app.run, daemon=True).start()
 
+time.sleep(3)
+app.reqAccountUpdates(True, "") # Request portfolio data
+time.sleep(10) # Wait to receive portfolio data
+
+
+print("start requesting historical data")
+global latch
+latch = CountDownLatch(len(contractList))
 for contract in contractList:
     reqId_contract_map[app.nextId()] = contract
 
 print(reqId_contract_map)
 for id, contract in reqId_contract_map.items():
-    print(id, " ", contract)
+    # print(id, " ", contract)
     #https://interactivebrokers.github.io/tws-api/historical_bars.html
     #https://interactivebrokers.github.io/tws-api/historical_bars.html#hd_what_to_show
     # TRADES data is adjusted for splits, but not dividends.
@@ -88,7 +146,7 @@ for id, contract in reqId_contract_map.items():
             reqId=id,
             contract=contract,
             endDateTime="",
-            durationStr="30 Y",
+            durationStr="10 Y",
             barSizeSetting="1 day",
             whatToShow="ADJUSTED_LAST",
             useRTH=0,

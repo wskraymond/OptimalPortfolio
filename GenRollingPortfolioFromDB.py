@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 import numpy as np
 import pandas_datareader as pdr
@@ -19,12 +20,24 @@ from datetime import datetime
 import mplcursors
 import yfinance as yf
 from yahooquery import Ticker
+from ibapi.contract import Contract
+from scipy import stats as ss
 
+store_host = 'host.docker.internal'
+
+# Create contract from portfolio row
+def create_contract_from_portfolio_row(row):
+    contract = Contract()
+    contract.symbol = row.name  # 'ticker' is set as index in DataFrame
+    contract.secType = "STK"
+    contract.currency = row['currency']['code']
+    return contract
 
 class Stats():
     def __init__(self, startdate, holdingPeriodYear, rollingYr, divTaxRate):
+        self.TRADING_DAYS = 252
         self.holdingPeriodYear = holdingPeriodYear
-        self.no_of_days = 252 * self.holdingPeriodYear  # number of days for a quarter = 63
+        self.no_of_days = self.TRADING_DAYS * self.holdingPeriodYear  # number of days for a quarter = 63
         self.fromDate = datetime.strptime(startdate, '%d/%m/%Y').date()
         self.Closeprice = pd.DataFrame()
         self.div = pd.DataFrame()
@@ -36,7 +49,18 @@ class Stats():
         self.recvTickers = []
         self.divTaxRate = divTaxRate
         self.rollingYr = rollingYr
-        self.windowSize = 252 * rollingYr
+        self.windowSize = self.TRADING_DAYS * rollingYr
+        self.store = Store(hosts=[store_host], keyspace='store')
+        # Append first portfolio contract to global list
+        global contractList
+        portfolio_list = self.store.select_portfolio_in_pd()
+        if not portfolio_list.empty:
+            for _, row in portfolio_list.iterrows():
+                contract = create_contract_from_portfolio_row(row)
+                contractList.append(contract)
+
+
+        print("contractList=", contractList)
 
     def loadYC(self):
         syms = ['DGS30', 'DGS20', 'DGS10', 'DGS5', 'DGS2', 'DGS1', 'DGS1MO', 'DGS3MO']
@@ -48,7 +72,7 @@ class Stats():
         # print(yc)
         self.yc = yc
 
-    def get_expense_ratio(self, ticker, etf):
+    """ def get_expense_ratio(self, ticker, etf):
         if ticker in etf.fund_profile and 'feesExpensesInvestment' in etf.fund_profile[
             ticker] and 'annualReportExpenseRatio' in etf.fund_profile[ticker]['feesExpensesInvestment']:
             # Both columns exist
@@ -56,14 +80,21 @@ class Stats():
         else:
             # Either or both columns do not exist
             expense_ratio = 0.0
-        return expense_ratio
+        return expense_ratio """
+    
+    def get_expense_ratio(self, ticker, etf):
+        try:
+            return etf.fund_profile[ticker]['feesExpensesInvestment']['annualReportExpenseRatio']
+        except (KeyError, TypeError):
+            return 0.0
+
 
     def loadDailyPrice(self):
-        store = Store(hosts=['127.0.0.1'], keyspace='store')
+        global contractList
         for i in contractList:
             try:
                 print(i.symbol)
-                rows = store.select_daily_price_in_pd_by_range(ticker=i.symbol,
+                rows = self.store.select_daily_price_in_pd_by_range(ticker=i.symbol,
                                                                fromDate=self.fromDate,
                                                                toDate=dt.date.today())
                 self.Closeprice[i.symbol] = rows['close']
@@ -75,7 +106,7 @@ class Stats():
         # https://pandas.pydata.org/docs/user_guide/timeseries.html
         self.Closeprice.index = pd.to_datetime(self.Closeprice.index).tz_localize(None)
 
-    def load_div_expense(self):
+    """ def load_div_expense(self):
         self.div = pd.DataFrame(index=self.Closeprice.index)
         for i in contractList:
             try:
@@ -87,13 +118,51 @@ class Stats():
                 self.div[i.symbol] = div
                 etf = Ticker(i.symbol)
                 self.expense_ratio.loc[i.symbol] = self.get_expense_ratio(i.symbol, etf)
+                time.sleep(3)  # to avoid being rate limited by yahoo
             except Exception as error:
                 print("An error occurred:", error)
                 traceback.print_exc()
                 print("symbol=", i.symbol, " cannot be resolved")
         # https://pandas.pydata.org/docs/user_guide/timeseries.html
         self.div = self.div[pd.to_datetime(self.fromDate) <= self.div.index]
+        self.div = self.div.fillna(0.0) """
+
+    def safe_get_dividends(self, symbol, retries=3, delay=2):
+        for attempt in range(retries):
+            try:
+                div = yf.Ticker(symbol).get_dividends()
+                if not div.empty:
+                    div.index = div.index.tz_localize(None)
+                return div
+            except Exception as e:
+                print(f"Retry {attempt+1} for {symbol}: {e}")
+                time.sleep(delay)
+                delay *= 2
+        return pd.Series()
+
+
+    def load_div_expense(self):
+        global contractList
+        self.div = pd.DataFrame(index=self.Closeprice.index)
+        symbols = [i.symbol for i in contractList]
+        print("Fetching expense ratios for symbols:", symbols)
+        etfs = Ticker(" ".join(symbols))
+
+        for i in contractList:
+            try:
+                print(f"Processing {i.symbol}")
+                div = self.safe_get_dividends(i.symbol)
+                self.div[i.symbol] = div
+                self.expense_ratio.loc[i.symbol] = self.get_expense_ratio(i.symbol, etfs)
+                time.sleep(1)
+            except Exception as error:
+                print("An error occurred:", error)
+                traceback.print_exc()
+                print("symbol=", i.symbol, " cannot be resolved")
+
+        self.div = self.div[self.div.index >= pd.to_datetime(self.fromDate)]
         self.div = self.div.fillna(0.0)
+
 
     def pre_return(self):
         # calculate the log return
@@ -146,6 +215,24 @@ class Stats():
         rolling_windows = self.returns.rolling(window=int(self.windowSize))
         corr_matrix = rolling_windows.corr(pairwise=True)
         return corr_matrix
+    
+    def generate_correlation_matrix_from_store(self):
+        if self.Closeprice.empty:
+            raise ValueError("No close price data loaded.")
+
+        # Filter valid tickers
+        valid_tickers = [col for col in self.returns.columns if self.returns[col].notna().sum() > 0]
+        df = self.returns[valid_tickers]
+
+        # Sort by total correlation
+        sorted_tickers = df.corr().sum().sort_values().index.tolist()
+        corr_matrix = df[sorted_tickers].corr()
+
+        return {
+            "tickers": sorted_tickers,
+            "matrix": corr_matrix.values.tolist()
+        }
+
 
 
 class Allocation():
@@ -283,6 +370,41 @@ class Allocation():
         dict.update(r)
         dict.update(a)
         return dict
+    
+    def calc_period_alpha_capm(self,
+                           betas: pd.DataFrame,
+                           benchmark: str = 'VOO') -> pd.Series:
+        """
+        Compute CAPM alpha over the holding period (no annualization):
+        α_period = R_i,period − [ r_f,period + β_i * (R_m,period − r_f,period) ]
+
+        Uses:
+        - self.hpr: 1‐period total return for each ticker (e.g. 3-month or 1-year)
+        - self.single_period_margin_rate: matching risk‐free return over that period
+        - betas: DataFrame indexed by ticker, with column=benchmark holding β_i
+        """
+        tickers = self.stat.recvTickers
+
+        # 1. Realized period return (array of holding‐period returns)
+        R_period = pd.Series(self.hpr, index=tickers)
+        print("R_period=", R_period)
+
+        # 2. Risk‐free return over the same holding period
+        rf_period = self.single_period_margin_rate
+
+        # 3. Market’s realized return over the holding period
+        Rm_period = R_period[benchmark]
+
+        # 4. CAPM‐expected period return per ticker
+        beta_series = betas[benchmark]
+        #print("rf_period=", rf_period, " Rm_period=", Rm_period, " beta_series=", beta_series)
+        E_period = rf_period + beta_series * (Rm_period - rf_period)
+
+        # 5. Period CAPM alpha
+        alpha_period = R_period - E_period
+
+        return alpha_period
+
 
 
 if __name__ == "__main__":
@@ -333,16 +455,19 @@ if __name__ == "__main__":
         plt.figure(0)
         stats.returns.plot()
         plt.title("log return")
+        plt.savefig('log_return.png')
 
         plt.figure(1)
         div = stats.div.groupby(stats.div.index.year).sum()
         div.plot()
         plt.title("tax adjusted div payment over year")
+        plt.savefig('div_0.png')
 
         plt.figure(2)
         div_yield = (np.exp(stats.div_return.groupby(stats.div_return.index.year).sum()) - 1) * 100
         div_yield.plot()
         plt.title("tax adjusted div yield per year")
+        plt.savefig('div_1.png')
 
         plt.figure(4)
         div_yield_over_time = (div / stats.Closeprice.loc[stats.Closeprice.first_valid_index()]) * 100
@@ -357,6 +482,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.show()
+        plt.savefig('div_2.png')
     elif args.cmd == 'o':
         rolling_return = stats.rolling_return_list()
         rolling_div_return = stats.rolling_div_return_list()
@@ -384,6 +510,7 @@ if __name__ == "__main__":
         plt.title(f"Alloc - optimal portfolio with {int(stats.holdingPeriodYear)}Y HPR rolling over {int(stats.rollingYr)}Y window")
 
         plt.show()
+        plt.savefig('o.png')
     elif args.cmd == 'o_avg':
         rolling_return = stats.rolling_return_list()
         rolling_div_return = stats.rolling_div_return_list()
@@ -416,6 +543,7 @@ if __name__ == "__main__":
         plt.title(f"Alloc - optimal portfolio with {int(stats.holdingPeriodYear)}Y HPR rolling over {int(stats.rollingYr)}Y EMA")
         plt.grid(True)
         plt.show()
+        plt.savefig('o_avg.png')
     elif args.cmd == 'corr':
         corr_matrix = stats.rolling_corr()
         plt.figure(figsize=(10, 6))
@@ -442,6 +570,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.show()
+        plt.savefig('corr.png')
     elif args.cmd == 'corr_3d':
         corr_matrix = stats.rolling_corr()
         fig = plt.figure()
@@ -462,6 +591,7 @@ if __name__ == "__main__":
         ax.set_title('3D Rolling Correlation Between Stocks')
         ax.legend()
         plt.show()
+        plt.savefig('corr_3d.png')
     elif args.cmd == 'ewm_corr_avg':
         ret = stats.returns
         # https://pandas.pydata.org/docs/reference/api/pandas.core.window.ewm.ExponentialMovingWindow.corr.html#pandas.core.window.ewm.ExponentialMovingWindow.corr
@@ -477,11 +607,11 @@ if __name__ == "__main__":
 
         plt.title("Mean of Exponential Weighted Moving Correlation")
         plt.show()
-    elif args.cmd == 'beta':
+        plt.savefig('ewm_corr_avg.png')
+    elif args.cmd == 'alpha':
         betas = {}
-        US_benchmark = 'SPY'
+        US_benchmark = 'VOO'
         benchmarks = {US_benchmark}
-        from scipy import stats as ss
 
         for i in stats.recvTickers:
             betas[i] = {}
@@ -493,9 +623,103 @@ if __name__ == "__main__":
         betas = pd.DataFrame(betas).transpose()
         print("betas=", betas)
 
+        alloc = Allocation(stats, stats.returns, stats.div_return)
+        alloc.preload()
+
+
+        alpha_period = alloc.calc_period_alpha_capm(
+            betas=betas,
+            benchmark=US_benchmark
+        )
+
+        # 3) Turn alpha into DataFrame for plotting
+        alpha_df = alpha_period.rename('alpha').to_frame().reset_index()
+        alpha_df.columns = ['ticker', 'alpha']
+
+        # 4) Plot bar chart of CAPM alpha
+        plt.figure(figsize=(12, 6))
+        sns.barplot(
+            data=alpha_df,
+            x='ticker',
+            y='alpha',
+            palette='vlag'
+        )
+        plt.axhline(0, color='black', linewidth=1)
+        plt.title(
+            f"CAPM Alpha over "
+            f"{stats.holdingPeriodYear}-year Holding Period"
+        )
+        plt.xlabel("Ticker")
+        plt.ylabel("Period Alpha")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+        plt.savefig('alpha.png')
+    elif args.cmd == 'alpha_avg':
+
+        US_benchmark = 'VOO'
+
+        # 1) get your list of rolling‐window return DataFrames
+        rolling_return = stats.rolling_return_list()
+
+        rolling_alpha = []
+        for window_ret in rolling_return:
+            # drop any rows with NaNs so regressions run cleanly
+            ret = window_ret.dropna()
+            if ret.empty:
+                continue
+
+            # 2) instantiate Allocation on this window’s returns + matching divs
+            div_ret_window = stats.div_return.loc[ret.index]
+            alloc = Allocation(stats, ret, div_ret_window)
+            alloc.preload()
+
+            # 3) compute betas in this window exactly as in cmd=='alpha'
+            betas_w = {}
+            for tkr in stats.recvTickers:
+                x = np.nan_to_num(ret[US_benchmark].values)
+                y = np.nan_to_num(ret[tkr].values)
+                slope, intercept, r_val, p_val, stderr = ss.linregress(x, y)
+                betas_w[tkr] = {US_benchmark: slope}
+
+            betas_df_w = pd.DataFrame(betas_w).transpose()
+
+            # 4) compute period‐CAPM alpha via your existing method
+            alpha_w = alloc.calc_period_alpha_capm(
+                betas=betas_df_w,
+                benchmark=US_benchmark
+            )
+
+            # record the window’s end date & its alpha Series
+            rolling_alpha.append((ret.index[-1], alpha_w))
+
+        # 5) assemble into a DataFrame: rows=window end dates, cols=tickers
+        alpha_matrix = pd.DataFrame(
+            [alpha for date, alpha in rolling_alpha],
+            index=[date for date, alpha in rolling_alpha]
+        )
+
+        # 6) smooth with EWM just like beta_avg
+        halflife = str(int(stats.windowSize) // 2) + " days"
+        alpha_avg = alpha_matrix.ewm(
+            halflife=halflife,
+            times=alpha_matrix.index
+        ).mean()
+
+        # 7) plot and save
+        plt.figure(figsize=(10, 6))
+        alpha_avg.plot()
+        plt.title(f"Rolling CAPM Alpha (halflife={halflife})")
+        plt.xlabel("Date")
+        plt.ylabel("CAPM Alpha (period)")
+        plt.legend(title="Ticker", bbox_to_anchor=(1.02, 1), loc="upper left")
+        plt.tight_layout()
+        plt.show()
+        plt.savefig('alpha_avg.png')
+
+
     elif args.cmd == 'beta_avg':
-        US_benchmark = 'SPY'
-        from scipy import stats as ss
+        US_benchmark = 'VOO' #'SPY'
 
         rolling_return = stats.rolling_return_list()
 
@@ -526,16 +750,19 @@ if __name__ == "__main__":
         rolling_avg.plot()
 
         plt.show()
+        plt.savefig('beta_avg.png')
     elif args.cmd == 'var':
         var = stats.returns.dropna().rolling(window=int(stats.windowSize)).var() * stats.no_of_days
         plt.figure(0)
         var.plot()
         plt.show()
+        plt.savefig('var.png')
     elif args.cmd == 'ewm_var':
         var = stats.returns.ewm(span=int(stats.windowSize)).var() * stats.no_of_days
         plt.figure(0)
         var.plot()
         plt.show()
+        plt.savefig('ewm_var.png')
     elif args.cmd == 'std':
         def roll_std(ret):
             mean_1 = np.exp(ret.mean() * stats.no_of_days)
@@ -554,6 +781,7 @@ if __name__ == "__main__":
                              index=[endDate for startDate, endDate, std in rolling_std])
         std_m.plot()
         plt.show()
+        plt.savefig('std.png')
 
     elif args.cmd == 'std_avg':
         def roll_std(ret):
@@ -577,3 +805,4 @@ if __name__ == "__main__":
         plt.grid(True)
         plt.title(f"Rolling Risk in a {stats.holdingPeriodYear}-Y holding Period")
         plt.show()
+        plt.savefig('std_avg.png')

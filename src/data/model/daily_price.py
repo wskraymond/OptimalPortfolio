@@ -14,6 +14,7 @@ from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.models import Model
 
 
+
 class Currency(UserType):
     code = columns.Text()
     country = columns.Text()
@@ -48,3 +49,69 @@ class DailyPrice(Model):
             'high': self.high,
             'low': self.low
         }
+    
+
+
+class Portfolio(Model):
+    __table_name__ = 'Portfolio'
+
+    ticker = columns.Text(primary_key=True, partition_key=True)
+    account_id = columns.Text(primary_key=True)  # Optional: if multiple accounts are tracked
+    position_type = columns.Text()  # e.g., 'Long' or 'Short'
+    qty = columns.Integer()
+    price = columns.Float()
+    market_value = columns.Float()
+    avg_cost = columns.Float()
+    currency = columns.UserDefinedType(Currency)
+    updated_at = columns.DateTime(default=datetime.utcnow)
+
+    def toMap(self):
+        return {
+            'ticker': self.ticker,
+            'account_id': self.account_id,
+            'position_type': self.position_type,
+            'qty': self.qty,
+            'price': self.price,
+            'market_value': self.market_value,
+            'avg_cost': self.avg_cost,
+            'currency': {
+                'code': self.currency.code,
+                'country': self.currency.country
+            },
+            'updated_at': self.updated_at
+        }
+
+class Dividend(Model):
+    __table_name__ = 'Dividend'
+
+    ticker = columns.Text(primary_key=True, partition_key=True)
+    date = columns.Date(primary_key=True, clustering_order="DESC")
+    amount = columns.Float()  # Dividend amount
+    created_at = columns.DateTime(default=datetime.utcnow)
+    updated_at = columns.DateTime(default=datetime.utcnow)
+
+    def toMap(self):
+        return {
+            'ticker': self.ticker,
+            'date': self.date,
+            'amount': self.amount,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
+    
+class Fund(Model):
+    __table_name__ = 'Fund'
+
+    ticker = columns.Text(primary_key=True, partition_key=True)
+    expense_ratio = columns.Float()  # Annual expense ratio as a percentage
+    created_at = columns.DateTime(default=datetime.utcnow)
+    updated_at = columns.DateTime(default=datetime.utcnow)
+
+    def toMap(self):
+        return {
+            'ticker': self.ticker,
+            'expense_ratio': self.expense_ratio,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
+

@@ -1,6 +1,7 @@
 # Optimal Portfolio
 
 ## Features
+0. S&P Stock List
 1. Price Risk using stock adjusted close price from market data source ( IB Data Or Tiingo)
 2. Portolio Risk & Return and Sharpe Ratio 
 3. Tangent portfolio for optimization from N stocks
@@ -13,6 +14,8 @@
 ![alt text](doc/2023_spy_optimal.png?raw=true "GenPortfolio3.py")
 ![alt text](doc/correlation.png?raw=true "Correlation.py")
 ![alt text](doc/yield_curve.png?raw=true "GenYieldCurve.py")
+
+Notes; xhost + 127.0.0.1 //Run the following command on your Mac to allow Docker to connect to the XQuartz server:
 
 ## Rolling Statistics
 ```

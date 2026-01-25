@@ -261,7 +261,7 @@ class RollingPortfolioAnalyzer:
         plt.tight_layout()
         img = fig_to_base64(fig); plt.close(fig)
 
-        return {"images": {"alpha": img}}
+        return {"CAPM":E_period.to_dict(), "beta": betas_df.to_dict(), "alpha": alpha_period.to_dict(), "images": {"alpha": img}}
 
     def run_alpha_avg(self, benchmark="VOO"):
         """Rolling CAPM alpha smoothed with EMA."""

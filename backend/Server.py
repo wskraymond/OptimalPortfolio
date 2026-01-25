@@ -197,7 +197,7 @@ def update_params():
     data = request.get_json()
     startdate = data.get("startdate", "01/01/2020")
     holdingPeriodYear = float(data.get("holdingPeriodYear", 1))
-    rollingYr = int(data.get("rollingYr", 5))
+    rollingYr = float(data.get("rollingYr", 5))
     divTaxRate = float(data.get("divTaxRate", 0.3))
 
     init_analyzer(startdate, holdingPeriodYear, rollingYr, divTaxRate)

@@ -52,6 +52,8 @@ cassandra-driver = "~3.25.0"
 mplcursors = "^0.7"
 yfinance = "^0.2.66"
 yahooquery = "^2.4.1"
+duckdb = "^1.4.3"
+polars = "^1.36.1"
 
 
 [tool.poetry.scripts]

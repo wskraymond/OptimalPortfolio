@@ -216,3 +216,9 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+#image files
+*.png
+scripts/*.png
+!doc/*.png
+.python-version
+.DS_Store

@@ -20,7 +20,8 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget,
     QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
     QHBoxLayout, QPushButton, QMessageBox,QDialog,
-    QFormLayout, QLineEdit, QScrollArea, QComboBox, QSizePolicy, QAction
+    QFormLayout, QLineEdit, QScrollArea, QComboBox, QSizePolicy, QAction,
+    QListWidget, QListWidgetItem, QTextEdit
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import pyqtSignal, QObject
@@ -176,11 +177,13 @@ class PortfolioVisualizer(QMainWindow):
         self.beta_tab = QWidget()
         self.corr_tab = QWidget()
         self.analyzer_tab = AnalyzerTab(self)
+        self.config_tab = ConfigTab(self)
 
         self.tabs.addTab(self.allocation_tab, "Allocation")
         self.tabs.addTab(self.beta_tab, "Beta")
         self.tabs.addTab(self.corr_tab, "covariance")
         self.tabs.addTab(self.analyzer_tab, "Analyzer")
+        self.tabs.addTab(self.config_tab, "Config")
 
         self._build_allocation_tab()
         self._build_beta_tab()
@@ -508,7 +511,92 @@ class PortfolioVisualizer(QMainWindow):
         self.hpr_table.resizeColumnsToContents()
 
 
+class ConfigTab(QWidget):
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        layout = QVBoxLayout()
 
+        # --- Stock selection ---
+        self.stock_dropdown = QComboBox()
+        layout.addWidget(self.stock_dropdown)
+
+        self.add_button = QPushButton("Add Stock")
+        self.add_button.clicked.connect(self.add_stock)
+        layout.addWidget(self.add_button)
+
+        self.remove_button = QPushButton("Remove Selected")
+        self.remove_button.clicked.connect(self.remove_selected)
+        layout.addWidget(self.remove_button)
+
+        self.selected_list = QListWidget()
+        self.selected_list.setSelectionMode(QListWidget.MultiSelection)
+        layout.addWidget(self.selected_list)
+
+        # --- LoadData controls ---
+        self.script_dropdown = QComboBox()
+        self.script_dropdown.addItems(["stock", "div", "ibdata"])
+        layout.addWidget(self.script_dropdown)
+
+        self.run_script_button = QPushButton("Run Script")
+        self.run_script_button.clicked.connect(self.run_script)
+        layout.addWidget(self.run_script_button)
+
+        self.output_area = QTextEdit()
+        self.output_area.setReadOnly(True)
+        layout.addWidget(self.output_area)
+
+        self.setLayout(layout)
+
+        # Request stock list from backend
+        sio.emit("get_stocks")
+
+        @sio.on("stocks_list")
+        def on_stocks_list(data):
+            self.stock_dropdown.clear()
+            self.stock_dropdown.addItem("ALL")
+            for s in data.get("stocks", []):
+                self.stock_dropdown.addItem(s)
+
+        @sio.on("stocks_selected")
+        def on_stocks_selected(data):
+            self.selected_list.clear()
+            for s in data.get("selected", []):
+                item = QListWidgetItem(s)
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                self.selected_list.addItem(item)
+
+        @sio.on("load_data_result")
+        def on_load_data_result(data):
+            if data.get("status") == "success":
+                self.output_area.setPlainText(
+                    f"Script {data['script']} ran successfully:\n\n{data['output']}"
+                )
+            else:
+                self.output_area.setPlainText(
+                    f"Error running {data['script']}:\n\n{data.get('error','Unknown error')}"
+                )
+
+    def add_stock(self):
+        selected = self.stock_dropdown.currentText()
+        current = [self.selected_list.item(i).text() for i in range(self.selected_list.count())]
+        if selected not in current:
+            current.append(selected)
+        sio.emit("set_selected_stocks", {"selected": current})
+        self.parent.selected_stocks = current
+
+    def remove_selected(self):
+        remaining = []
+        for i in range(self.selected_list.count()):
+            item = self.selected_list.item(i)
+            if not item.isSelected():
+                remaining.append(item.text())
+        sio.emit("set_selected_stocks", {"selected": remaining})
+        self.parent.selected_stocks = remaining
+
+    def run_script(self):
+        script = self.script_dropdown.currentText()
+        sio.emit("loadData", {"script": script})
 
 
 if __name__ == "__main__":

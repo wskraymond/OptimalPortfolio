@@ -15,14 +15,17 @@ from datetime import datetime
 from cassandra.cqlengine.management import sync_table, drop_table
 from cassandra.cqlengine.models import Model
 
-from data.model.daily_price import DailyPrice, Currency, Portfolio, Fund, Dividend
+from data.model.daily_price import DailyPrice, Currency, Portfolio, Fund, Dividend, Stock
+import concurrent.futures
 import pandas as pd
+from ibapi.contract import Contract
 
 class Store:
     def __init__(self, hosts, keyspace):
         connection.setup(hosts=hosts, default_keyspace=keyspace, protocol_version=3)
         sync_table(DailyPrice)
         sync_table(Portfolio)
+        sync_table(Stock)
         sync_table(Fund)
         sync_table(Dividend)
 
@@ -201,6 +204,110 @@ class Store:
         tmp = pd.DataFrame.from_records([x.toMap() for x in rows])
         tmp.set_index('ticker', inplace=True, drop=True)
         return tmp
+
+    # --- CRUD Operations for Stock ---
+    def insert_stock(self, bucket, ticker, secType, exchange, currency, created_at=None, updated_at=None, batch=None):
+        if created_at is None:
+            created_at = datetime.now()
+        if updated_at is None:
+            updated_at = datetime.now()
+
+        Stock.batch(batch).create(
+            bucket=bucket,
+            ticker=ticker,
+            secType=secType,
+            exchange=exchange,
+            currency=Currency(code=currency['code'], country=currency['country']),
+            created_at=created_at,
+            updated_at=updated_at
+        )
+
+    def batch_insert_stock(self, stocks:list[Stock], execute_on_exception=False):
+        with BatchQuery(execute_on_exception=execute_on_exception, timeout=None) as b:
+            now = datetime.now()
+            for stock in stocks:
+                # Skip if ticker already exists in any bucket
+                existing = Stock.objects.filter(ticker=stock['ticker']).first()
+                if existing is not None:
+                    continue
+                self.insert_stock(
+                    bucket=stock['bucket'],
+                    ticker=stock['ticker'],
+                    secType=stock['secType'],
+                    exchange=stock['exchange'],
+                    currency=stock['currency'],
+                    created_at=now,
+                    updated_at=now,
+                    batch=b
+                )
+
+    # --- CRUD Operations for Stock ---
+    def select_stock(self, bucket, ticker):
+        return Stock.objects(bucket=bucket, ticker=ticker).first()
+
+    def update_stock(self, bucket, ticker, **kwargs):
+        stock = self.select_stock(bucket, ticker)
+        if stock:
+            for key, value in kwargs.items():
+                setattr(stock, key, value)
+            stock.updated_at = datetime.now()
+            stock.save()
+        
+    def save_contract_list(self, contracts:list[Contract], bucket='S&P'):
+        l = []
+        for contract in contracts:
+            # Determine country by ticker suffix
+            country = "US"
+            if contract.currency == "JPY":
+                country = "JP"
+            elif contract.currency == "HKD":
+                country = "HK"
+            elif contract.currency == "CNY":
+                country = "CN"
+            
+            stock = Stock(
+                bucket=bucket,
+                ticker=contract.symbol,
+                secType=contract.secType,
+                exchange=contract.exchange,
+                currency=Currency(code=contract.currency, country=country)
+            )
+            l.append(stock)
+        self.batch_insert_stock(l)
+        
+
+    def delete_stock(self, bucket, ticker):
+        stock = self.select_stock(bucket, ticker)
+        if stock:
+            stock.delete()
+
+    def select_stocks_by_bucket(self, bucket):
+        return Stock.objects.filter(bucket=bucket).all()
+
+    def select_all_stocks(self):
+        rows = Stock.objects.all()
+        for r in rows:
+            yield r
+
+    def select_all_stocks_in_pd(self):
+        rows = list(self.select_all_stocks())
+        tmp = pd.DataFrame.from_records([x.toMap() for x in rows])
+        if not tmp.empty:
+            tmp.set_index('ticker', inplace=True, drop=True)
+        return tmp
+    
+    def select_all_stocks_in_contract(self):
+        rows = list(self.select_all_stocks())
+        contracts = []
+        for r in rows:
+            contract = Contract()
+            contract.symbol = r.ticker
+            contract.secType = r.secType
+            contract.exchange = r.exchange
+            contract.currency = r.currency.code
+            contracts.append(contract)
+        return contracts
+    
 
     # --- CRUD Operations for Dividend ---
     def insert_dividend(self, ticker, date, amount, created_at=None, updated_at=None):

@@ -113,12 +113,7 @@ def pre_start_init():
     print("Initializing resources...")
     # Append first portfolio contract to global list
     global contractList
-    portfolio_list = store.select_portfolio_in_pd()
-    if not portfolio_list.empty:
-        for _, row in portfolio_list.iterrows():
-            contract = create_contract_from_portfolio_row(row)
-            contractList.append(contract)
-
+    contractList.extend(store.select_all_stocks_in_contract())
 
     print("contractList=", contractList)
     # Load config, connect to DB, etc.

@@ -20,6 +20,32 @@ class Currency(UserType):
     country = columns.Text()
 
 
+class Stock(Model):
+    __table_name__ = 'Stock'
+    
+    bucket = columns.Text(partition_key=True)
+    ticker = columns.Text(primary_key=True)
+    secType = columns.Text()  # Security type (STK, OPT, etc.)
+    exchange = columns.Text()  # Exchange (SMART, NASDAQ, etc.)
+    currency = columns.UserDefinedType(Currency)
+    created_at = columns.DateTime(default=lambda: datetime.now(datetime.timezone.utc))
+    updated_at = columns.DateTime(default=lambda: datetime.now(datetime.timezone.utc))
+    
+    def toMap(self):
+        return {
+            'bucket': self.bucket,
+            'ticker': self.ticker,
+            'secType': self.secType,
+            'exchange': self.exchange,
+            'currency': {
+                'code': self.currency.code,
+                'country': self.currency.country
+            },
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
+
+
 class DailyPrice(Model):
     __table_name__ = 'DailyPrice'
     # __options__ = {'compaction': {'class': 'SizeTieredCompactionStrategy',

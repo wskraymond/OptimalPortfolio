@@ -8,6 +8,8 @@ from data.store import Store
 import pandas as pd
 import numpy as np
 from ibapi.contract import Contract
+import subprocess
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -247,6 +249,9 @@ def handle_run_analysis(data):
     rollingYr = float(args.get("rollingYr", 5))
     divTaxRate = float(args.get("divTaxRate", 0.3))
 
+
+    global contractList
+    contractList = store.select_all_stocks_in_contract()
     analyzer = RollingPortfolioAnalyzer(
         startdate=startdate,
         holdingPeriodYear=holdingPeriodYear,
@@ -260,6 +265,94 @@ def handle_run_analysis(data):
 
     # Push result back to the client
     emit("analysis_result", result)
+
+@socketio.on("get_stocks")
+def handle_get_stocks():
+    try:
+        tickers = cassandra_query_all_symbols()
+        emit("stocks_list", {"stocks": tickers})
+    except Exception as e:
+        emit("stocks_list", {"error": str(e), "stocks": []})
+
+@socketio.on("set_selected_stocks")
+def handle_set_selected_stocks(data):
+    global selected_stocks
+    selected = data.get("selected", [])
+    selected_stocks = selected
+    emit("stocks_selected", {"selected": selected_stocks})
+
+
+@socketio.on("loadData")
+def handle_load_data(data=None):
+    """
+    Run individual scripts from src/scripts
+    Expected data format:
+    { "script": "stock" | "div" | "ibdata" }
+    """
+    script_name = data.get("script", "stock") if data else "stock"
+
+    server_dir = os.path.dirname(os.path.abspath(__file__))
+    workspace_root = os.path.dirname(server_dir)
+
+    script_map = {
+        "stock": "src/scripts/load_stock_list.py",
+        "div": "src/scripts/load_div_expense.py",
+        "ibdata": "IBData.py"
+    }
+
+    if script_name not in script_map:
+        emit("load_data_result", {"status": "error", "error": f"Unknown script: {script_name}"})
+        return
+
+    script_path = script_map[script_name]
+
+    try:
+        env = os.environ.copy()
+        env['PYTHONPATH'] = workspace_root
+
+        result = subprocess.run(
+            ['python3', script_path],
+            cwd=workspace_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        if result.returncode == 0:
+            emit("load_data_result", {
+                "status": "success",
+                "script": script_name,
+                "output": result.stdout
+            })
+
+            # If we just ran the stock script, reload the stock list
+            if script_name == "stock":
+                try:
+                    tickers = cassandra_query_all_symbols()
+                    emit("stocks_list", {"stocks": tickers})
+                except Exception as e:
+                    emit("stocks_list", {"error": str(e), "stocks": []})
+
+        else:
+            emit("load_data_result", {
+                "status": "error",
+                "script": script_name,
+                "error": result.stderr
+            })
+
+    except subprocess.TimeoutExpired:
+        emit("load_data_result", {
+            "status": "error",
+            "script": script_name,
+            "error": "Script execution timed out"
+        })
+    except Exception as e:
+        emit("load_data_result", {
+            "status": "error",
+            "script": script_name,
+            "error": str(e)
+        })
 
 # Create contract from portfolio row
 def create_contract_from_portfolio_row(row):
@@ -297,6 +390,16 @@ def pre_start_init():
     # Load config, connect to DB, etc.
 
     init_analyzer()
+
+# In-memory store of selected tickers (per session)
+selected_stocks = []
+
+def cassandra_query_all_symbols():
+    # Query all stocks from store
+    rows = store.select_all_stocks()
+    return [row.ticker for row in rows]
+
+
 
 if __name__ == "__main__":
     pre_start_init()

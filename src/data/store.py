@@ -308,6 +308,21 @@ class Store:
             contracts.append(contract)
         return contracts
     
+    def select_contracts_by_tickers(self, tickers):
+        """
+        Given a list of ticker symbols, return a list of Contract objects.
+        """
+        contracts = []
+        for t in tickers:
+            row = Stock.objects.filter(ticker=t).allow_filtering().first()
+            if row:
+                contract = Contract()
+                contract.symbol = row.ticker
+                contract.secType = row.secType
+                contract.exchange = row.exchange
+                contract.currency = row.currency.code
+                contracts.append(contract)
+        return contracts
 
     # --- CRUD Operations for Dividend ---
     def insert_dividend(self, ticker, date, amount, created_at=None, updated_at=None):

@@ -510,14 +510,18 @@ class PortfolioVisualizer(QMainWindow):
 
         self.hpr_table.resizeColumnsToContents()
 
-
 class ConfigTab(QWidget):
+    # Signals to marshal data back to the GUI thread
+    stocks_list_received = pyqtSignal(dict)
+    stocks_selected_received = pyqtSignal(dict)
+    load_data_result_received = pyqtSignal(dict)
+
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
         layout = QVBoxLayout()
 
-        # --- Stock selection ---
+        # --- Stock selection controls ---
         self.stock_dropdown = QComboBox()
         layout.addWidget(self.stock_dropdown)
 
@@ -533,7 +537,7 @@ class ConfigTab(QWidget):
         self.selected_list.setSelectionMode(QListWidget.MultiSelection)
         layout.addWidget(self.selected_list)
 
-        # --- LoadData controls ---
+        # --- Script execution controls ---
         self.script_dropdown = QComboBox()
         self.script_dropdown.addItems(["stock", "div", "ibdata"])
         layout.addWidget(self.script_dropdown)
@@ -548,43 +552,82 @@ class ConfigTab(QWidget):
 
         self.setLayout(layout)
 
-        # Request stock list from backend
-        sio.emit("get_stocks")
+        # Connect signals to slots
+        self.stocks_list_received.connect(self.on_stocks_list)
+        self.stocks_selected_received.connect(self.on_stocks_selected)
+        self.load_data_result_received.connect(self.on_load_data_result)
 
+        # Register socket handlers (emit signals instead of touching UI directly)
         @sio.on("stocks_list")
-        def on_stocks_list(data):
-            self.stock_dropdown.clear()
-            self.stock_dropdown.addItem("ALL")
-            for s in data.get("stocks", []):
-                self.stock_dropdown.addItem(s)
+        def handle_stocks_list(data):
+            self.stocks_list_received.emit(data)
 
         @sio.on("stocks_selected")
-        def on_stocks_selected(data):
-            self.selected_list.clear()
-            for s in data.get("selected", []):
-                item = QListWidgetItem(s)
-                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-                self.selected_list.addItem(item)
+        def handle_stocks_selected(data):
+            self.stocks_selected_received.emit(data)
 
         @sio.on("load_data_result")
-        def on_load_data_result(data):
-            if data.get("status") == "success":
-                self.output_area.setPlainText(
-                    f"Script {data['script']} ran successfully:\n\n{data['output']}"
-                )
-            else:
-                self.output_area.setPlainText(
-                    f"Error running {data['script']}:\n\n{data.get('error','Unknown error')}"
-                )
+        def handle_load_data_result(data):
+            self.load_data_result_received.emit(data)
 
+        # Request initial stock list
+        sio.emit("get_stocks")
+
+    # --- Slots (safe UI updates) ---
+    def on_stocks_list(self, data):
+        # data is a map {bucket: [tickers]}
+        self.bucket_map = data.get("stocks", {})
+        self.stock_dropdown.clear()
+        self.stock_dropdown.addItem("ALL")
+
+        # Add bucket names
+        for bucket in self.bucket_map.keys():
+            self.stock_dropdown.addItem(bucket)
+            # Add individual tickers (just ticker name, no prefix)
+            for t in self.bucket_map[bucket]:
+                self.stock_dropdown.addItem(t)
+
+    def on_stocks_selected(self, data):
+        self.selected_list.clear()
+        for s in data.get("selected", []):
+            item = QListWidgetItem(s)
+            item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            self.selected_list.addItem(item)
+
+    def on_load_data_result(self, data):
+        if data.get("status") == "success":
+            self.output_area.setPlainText(
+                f"Script {data['script']} ran successfully:\n\n{data['output']}"
+            )
+        else:
+            self.output_area.setPlainText(
+                f"Error running {data.get('script','?')}:\n\n{data.get('error','Unknown error')}"
+            )
+
+    # --- Button handlers ---
     def add_stock(self):
         selected = self.stock_dropdown.currentText()
         current = [self.selected_list.item(i).text() for i in range(self.selected_list.count())]
-        if selected not in current:
-            current.append(selected)
+
+        if selected == "ALL":
+            # add all tickers from all buckets
+            for tickers in self.bucket_map.values():
+                for t in tickers:
+                    if t not in current:
+                        current.append(t)
+        elif selected in self.bucket_map:
+            # add all tickers from the chosen bucket
+            for t in self.bucket_map[selected]:
+                if t not in current:
+                    current.append(t)
+        else:
+            # treat as individual ticker
+            if selected not in current:
+                current.append(selected)
+
         sio.emit("set_selected_stocks", {"selected": current})
         self.parent.selected_stocks = current
-
+        
     def remove_selected(self):
         remaining = []
         for i in range(self.selected_list.count()):
@@ -597,6 +640,7 @@ class ConfigTab(QWidget):
     def run_script(self):
         script = self.script_dropdown.currentText()
         sio.emit("loadData", {"script": script})
+
 
 
 if __name__ == "__main__":

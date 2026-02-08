@@ -9,7 +9,7 @@ from cassandra.query import named_tuple_factory
 import uuid
 from cassandra.cqlengine import columns, ValidationError
 from cassandra.cqlengine import connection
-from datetime import datetime
+from datetime import datetime, timezone
 from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.models import Model
 
@@ -24,12 +24,12 @@ class Stock(Model):
     __table_name__ = 'Stock'
     
     bucket = columns.Text(partition_key=True)
-    ticker = columns.Text(primary_key=True)
+    ticker = columns.Text(primary_key=True, index=True) #here only mark indexing, you're required to create index: CREATE INDEX ON Stock (ticker)
     secType = columns.Text()  # Security type (STK, OPT, etc.)
     exchange = columns.Text()  # Exchange (SMART, NASDAQ, etc.)
     currency = columns.UserDefinedType(Currency)
-    created_at = columns.DateTime(default=lambda: datetime.now(datetime.timezone.utc))
-    updated_at = columns.DateTime(default=lambda: datetime.now(datetime.timezone.utc))
+    created_at = columns.DateTime(default=lambda: datetime.now(timezone.utc))
+    updated_at = columns.DateTime(default=lambda: datetime.now(timezone.utc))
     
     def toMap(self):
         return {

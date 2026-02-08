@@ -251,7 +251,8 @@ def handle_run_analysis(data):
 
 
     global contractList
-    contractList = store.select_all_stocks_in_contract()
+    contractList.clear()
+    contractList.extend(store.select_contracts_by_tickers(selected_stocks))
     analyzer = RollingPortfolioAnalyzer(
         startdate=startdate,
         holdingPeriodYear=holdingPeriodYear,
@@ -270,6 +271,7 @@ def handle_run_analysis(data):
 def handle_get_stocks():
     try:
         tickers = cassandra_query_all_symbols()
+        print("Queried tickers from Cassandra:", tickers)
         emit("stocks_list", {"stocks": tickers})
     except Exception as e:
         emit("stocks_list", {"error": str(e), "stocks": []})
@@ -395,9 +397,12 @@ def pre_start_init():
 selected_stocks = []
 
 def cassandra_query_all_symbols():
-    # Query all stocks from store
     rows = store.select_all_stocks()
-    return [row.ticker for row in rows]
+    bucket_map = {}
+    for row in rows:
+        bucket_map.setdefault(row.bucket, []).append(row.ticker)
+    return bucket_map
+
 
 
 

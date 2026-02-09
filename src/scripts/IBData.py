@@ -1,12 +1,12 @@
 from ibapi.client import *
 from ibapi.wrapper import *
 import pandas as pd
-from twsapi_macunix.IBJts.source.pythonclient.build.lib.ibapi.contract import Contract
+from ibapi.contract import Contract
 import requests
 
-from src.data.common.CountDownLatch import CountDownLatch
-from src.data.contract.MyContract import contractList
-from src.data.store import Store
+from data.common.CountDownLatch import CountDownLatch
+from data.contract.MyContract import contractList
+from data.store import Store
 from datetime import datetime
 import time
 import threading
@@ -38,6 +38,7 @@ class TestApp(EClient, EWrapper):
         EClient.__init__(self, self)
         self.data = {}
         self.portfolio_data = []
+        self.portfolio_contracts = []
         self.orderId = 0
         self.store = Store(hosts=[store_host], keyspace='store')
 
@@ -88,14 +89,18 @@ class TestApp(EClient, EWrapper):
             }
         })
 
+        self.portfolio_contracts.append(contract)
+
     def accountDownloadEnd(self, account: str):
         print(f"Account download complete for {account}")
         self.store.batch_insert_portfolio(self.portfolio_data)
+        print(f"portfolio contracts : {self.portfolio_contracts}")
+        self.store.save_contract_list(self.portfolio_contracts, bucket='Portfolio')
 
 
     def historicalData(self, reqId: int, bar: BarData):
         mycontract = reqId_contract_map[reqId]
-        # print(mycontract.symbol, bar)
+        # print(mycontract.symbol)
         if reqId not in self.data:
             self.data[reqId] = []
         self.data[reqId].append(DailyPriceData(ticker=mycontract.symbol,
@@ -125,6 +130,7 @@ def create_contract_from_portfolio_row(row):
     contract = Contract()
     contract.symbol = row.name  # 'ticker' is set as index in DataFrame
     contract.secType = "STK"
+    contract.exchange = "SMART"
     contract.currency = row['currency']['code']
     return contract
 
@@ -135,17 +141,6 @@ threading.Thread(target=app.run, daemon=True).start()
 time.sleep(3)
 app.reqAccountUpdates(True, "") # Request portfolio data
 time.sleep(10) # Wait to receive portfolio data
-
-# save portfolio data to store and also append to contractList for historical data request later.
-P_list = []
-portfolio_list = app.get_store().select_portfolio_in_pd()
-if not portfolio_list.empty:
-    for _, row in portfolio_list.iterrows():
-        contract = create_contract_from_portfolio_row(row)
-        P_list.append(contract)
-
-app.get_store().save_contract_list(P_list, bucket="Portfolio")
-
 
 contractList.extend(app.get_store().select_all_stocks_in_contract()) # Load S&P stocks from the store to contractList
 

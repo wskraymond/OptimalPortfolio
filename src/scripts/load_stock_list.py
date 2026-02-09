@@ -40,7 +40,10 @@ def pre_start_init():
     # add tickers to contractList following the same format as above, with exchange = SMART and currency = USD
     for ticker in tickers:
         contract = Contract()
-        contract.symbol = ticker
+        if '.' in ticker:
+            contract.symbol = ticker.replace('.', ' ')
+        else:
+            contract.symbol = ticker
         contract.secType = "STK"
         contract.exchange = "SMART"
         contract.currency = "USD"
@@ -49,7 +52,10 @@ def pre_start_init():
     ETF_list = []
     for ticker in benchmarks: ## according to the suffix of the ticker, we can set the exchange and currency
         contract = Contract()
-        contract.symbol = ticker
+        if '.' in ticker:
+            contract.symbol = ticker.split('.')[0]
+        else:
+            contract.symbol = ticker
         contract.secType = "STK"
         if ticker.endswith('.T'):
             contract.exchange = "SMART"

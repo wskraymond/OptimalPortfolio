@@ -28,6 +28,7 @@ class Stock(Model):
     secType = columns.Text()  # Security type (STK, OPT, etc.)
     exchange = columns.Text()  # Exchange (SMART, NASDAQ, etc.)
     currency = columns.UserDefinedType(Currency)
+    lastTradeDateOrContractMonth = columns.Text()  # Optional: for options and futures # lastTradeDateOrContractMonth = '20441115'
     created_at = columns.DateTime(default=lambda: datetime.now(timezone.utc))
     updated_at = columns.DateTime(default=lambda: datetime.now(timezone.utc))
     
@@ -41,6 +42,7 @@ class Stock(Model):
                 'code': self.currency.code,
                 'country': self.currency.country
             },
+            'lastTradeDateOrContractMonth': self.lastTradeDateOrContractMonth,
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }

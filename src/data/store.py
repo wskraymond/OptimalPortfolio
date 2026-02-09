@@ -206,7 +206,7 @@ class Store:
         return tmp
 
     # --- CRUD Operations for Stock ---
-    def insert_stock(self, bucket, ticker, secType, exchange, currency, created_at=None, updated_at=None, batch=None):
+    def insert_stock(self, bucket, ticker, secType, exchange, currency, lastTradeDateOrContractMonth=None, created_at=None, updated_at=None, batch=None):
         if created_at is None:
             created_at = datetime.now()
         if updated_at is None:
@@ -218,6 +218,7 @@ class Store:
             secType=secType,
             exchange=exchange,
             currency=Currency(code=currency['code'], country=currency['country']),
+            lastTradeDateOrContractMonth=lastTradeDateOrContractMonth,
             created_at=created_at,
             updated_at=updated_at
         )
@@ -236,6 +237,7 @@ class Store:
                     secType=stock['secType'],
                     exchange=stock['exchange'],
                     currency=stock['currency'],
+                    lastTradeDateOrContractMonth=stock['lastTradeDateOrContractMonth'],
                     created_at=now,
                     updated_at=now,
                     batch=b
@@ -269,8 +271,9 @@ class Store:
                 bucket=bucket,
                 ticker=contract.symbol,
                 secType=contract.secType,
-                exchange=contract.exchange,
-                currency=Currency(code=contract.currency, country=country)
+                exchange=contract.primaryExchange if contract.primaryExchange else contract.exchange,
+                currency=Currency(code=contract.currency, country=country),
+                lastTradeDateOrContractMonth=contract.lastTradeDateOrContractMonth if hasattr(contract, 'lastTradeDateOrContractMonth') else None
             )
             l.append(stock)
         self.batch_insert_stock(l)

@@ -54,7 +54,7 @@ class Stats():
 
     def loadDailyPrice(self):
         global contractList
-        for i in contractList:
+        for i in contractList[:]:
             try:
                 print(i.symbol)
                 rows = self.store.select_daily_price_in_pd_by_range(ticker=i.symbol,
@@ -66,6 +66,8 @@ class Stats():
                 print("An error occurred:", error)
                 traceback.print_exc()
                 print("symbol=", i.symbol, " cannot be resolved")
+                contractList.remove(i)
+        
         # https://pandas.pydata.org/docs/user_guide/timeseries.html
         self.Closeprice.index = pd.to_datetime(self.Closeprice.index).tz_localize(None)
 

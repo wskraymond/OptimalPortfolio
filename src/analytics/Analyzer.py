@@ -148,34 +148,53 @@ class RollingPortfolioAnalyzer:
 
         def rolling_optimize(ret, div):
             alloc = Allocation(self.stats, ret, div)
-            alloc.preload(); alloc.optimize()
+            alloc.preload()
+            alloc.optimize()
             return alloc
 
-        rolling_alloc = [rolling_optimize(r.dropna(), d.dropna())
-                         for r, d in zip(rolling_return, rolling_div_return)
-                         if not r.empty and not d.empty]
+        rolling_alloc = [
+            rolling_optimize(r.dropna(), d.dropna())
+            for r, d in zip(rolling_return, rolling_div_return)
+            if not r.empty and not d.empty
+        ]
 
         ratio_m = pd.DataFrame([a.get_result() for a in rolling_alloc],
-                               index=[a.endDate for a in rolling_alloc])
+                            index=[a.endDate for a in rolling_alloc])
         alloc_m = pd.DataFrame([a.get_allocation() for a in rolling_alloc],
-                               index=[a.endDate for a in rolling_alloc])
-
+                            index=[a.endDate for a in rolling_alloc])
+        
         halflife = str(int(self.stats.windowSize) // 2) + " days"
         alloc_mean = alloc_m.ewm(halflife=halflife, times=alloc_m.index).mean()
         ratio_mean = ratio_m.ewm(halflife=halflife, times=ratio_m.index).mean()
 
+        # --- NEW PART: Select top 20 stocks by average allocation ---
+        avg_alloc = alloc_mean.mean(axis=0)  # average allocation per stock
+        top20_stocks = avg_alloc.nlargest(20).index
+        alloc_mean_top20 = alloc_mean[top20_stocks]
+
+        # Plot ratio
         fig1, ax1 = plt.subplots()
         ratio_mean.plot(ax=ax1)
-        ax1.set_title(f"Ratio - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y EMA")
-        img_ratio = fig_to_base64(fig1); plt.close(fig1)
+        ax1.set_title(
+            f"Ratio - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR "
+            f"rolling over {int(self.stats.rollingYr)}Y EMA"
+        )
+        img_ratio = fig_to_base64(fig1)
+        plt.close(fig1)
 
+        # Plot allocations (only top 20)
         fig2, ax2 = plt.subplots()
-        alloc_mean.plot(ax=ax2)
-        ax2.set_title(f"Alloc - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y EMA")
+        alloc_mean_top20.plot(ax=ax2)
+        ax2.set_title(
+            f"Alloc (Top 20) - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR "
+            f"rolling over {int(self.stats.rollingYr)}Y EMA"
+        )
         ax2.grid(True)
-        img_alloc = fig_to_base64(fig2); plt.close(fig2)
+        img_alloc = fig_to_base64(fig2)
+        plt.close(fig2)
 
         return {"images": {"ratio": img_ratio, "allocation": img_alloc}}
+
 
     def run_corr(self):
         """Rolling correlation time series (cmd == 'corr')."""

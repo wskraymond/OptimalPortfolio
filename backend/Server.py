@@ -253,6 +253,7 @@ def handle_run_analysis(data):
     global contractList
     contractList.clear()
     contractList.extend(store.select_contracts_by_tickers(selected_stocks))
+    print("Updated contractList based on selected stocks:", contractList)
     analyzer = RollingPortfolioAnalyzer(
         startdate=startdate,
         holdingPeriodYear=holdingPeriodYear,
@@ -280,7 +281,9 @@ def handle_get_stocks():
 def handle_set_selected_stocks(data):
     global selected_stocks
     selected = data.get("selected", [])
-    selected_stocks = selected
+    selected_stocks.clear()
+    selected_stocks.extend(selected)
+    print("Updated selected stocks:", selected_stocks)
     emit("stocks_selected", {"selected": selected_stocks})
 
 

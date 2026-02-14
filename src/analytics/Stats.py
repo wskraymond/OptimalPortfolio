@@ -54,59 +54,74 @@ class Stats():
 
     def loadDailyPrice(self):
         global contractList
+        close_dict = {}
+        valid_symbols = []
+
         for i in contractList[:]:
             try:
                 print(i.symbol)
-                rows = self.store.select_daily_price_in_pd_by_range(ticker=i.symbol,
-                                                               fromDate=self.fromDate,
-                                                               toDate=dt.date.today())
-                self.Closeprice[i.symbol] = rows['close']
-                self.recvTickers.append(i.symbol)
+                rows = self.store.select_daily_price_in_pd_by_range(
+                    ticker=i.symbol,
+                    fromDate=self.fromDate,
+                    toDate=dt.date.today()
+                )
+                close_dict[i.symbol] = rows['close']
+                valid_symbols.append(i.symbol)
             except Exception as error:
                 print("An error occurred:", error)
                 traceback.print_exc()
                 print("symbol=", i.symbol, " cannot be resolved")
                 contractList.remove(i)
-        
-        # https://pandas.pydata.org/docs/user_guide/timeseries.html
+
+        # Build DataFrame at once
+        self.Closeprice = pd.DataFrame(close_dict)
+
+        # Ensure datetime index
         self.Closeprice.index = pd.to_datetime(self.Closeprice.index).tz_localize(None)
+
+        # Track tickers
+        self.recvTickers.extend(valid_symbols)
+
 
     def load_div_expense(self):
         """
         Refactored method to load dividend and expense ratio data directly from the Cassandra store.
         """
         global contractList
-        self.div = pd.DataFrame(index=self.Closeprice.index)
-        self.expense_ratio = pd.Series(dtype=float)
+        div_dict = {}
+        expense_ratio_dict = {}
 
         for contract in contractList:
             try:
                 print(f"Loading data for {contract.symbol}")
 
-                # Fetch dividend data from the store
+                # Fetch dividend data
                 div_data = self.store.select_dividends_in_pd_by_range(
                     ticker=contract.symbol,
                     fromDate=self.fromDate,
                     toDate=dt.date.today()
                 )
 
-                # Fetch expense ratio data from the store
+                # Fetch expense ratio data
                 expense_ratio_data = self.store.select_fund(contract.symbol).expense_ratio
 
-                # Populate the DataFrame with dividend data
+                # Collect dividend data
                 if not div_data.empty:
-                    self.div[contract.symbol] = div_data['amount']
+                    div_dict[contract.symbol] = div_data['amount']
 
-                # Populate the Series with expense ratio data
-                self.expense_ratio.loc[contract.symbol] = expense_ratio_data
+                # Collect expense ratio data
+                expense_ratio_dict[contract.symbol] = expense_ratio_data
 
             except Exception as error:
                 print(f"An error occurred while processing {contract.symbol}: {error}")
                 traceback.print_exc()
 
-        # Ensure dividend data aligns with the date range and fill missing values
-        self.div = self.div[self.div.index >= pd.to_datetime(self.fromDate)]
-        self.div = self.div.fillna(0.0)
+        # Build DataFrame and Series at once
+        self.div = pd.DataFrame(div_dict, index=self.Closeprice.index)
+        self.div = self.div[self.div.index >= pd.to_datetime(self.fromDate)].fillna(0.0)
+
+        self.expense_ratio = pd.Series(expense_ratio_dict, dtype=float)
+
 
 
     def pre_return(self):

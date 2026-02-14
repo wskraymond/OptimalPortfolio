@@ -401,9 +401,15 @@ selected_stocks = []
 
 def cassandra_query_all_symbols():
     rows = store.select_all_stocks()
+    p_pd = store.select_portfolio_in_pd()
+    p_tickers = set(p_pd.index) if not p_pd.empty else set()
     bucket_map = {}
     for row in rows:
         bucket_map.setdefault(row.bucket, []).append(row.ticker)
+
+    for ticker in p_tickers:
+        if ticker not in bucket_map.get("Portfolio", []):
+            bucket_map.setdefault("Portfolio", []).append(ticker)
     return bucket_map
 
 

@@ -179,6 +179,10 @@ class RollingPortfolioAnalyzer:
             f"Ratio - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR "
             f"rolling over {int(self.stats.rollingYr)}Y EMA"
         )
+        ax1.grid(True)
+        # Move legend outside
+        ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5), fontsize='small')
+        fig1.tight_layout()
         img_ratio = fig_to_base64(fig1)
         plt.close(fig1)
 
@@ -190,6 +194,14 @@ class RollingPortfolioAnalyzer:
             f"rolling over {int(self.stats.rollingYr)}Y EMA"
         )
         ax2.grid(True)
+        # Move legend outside, compact
+        ax2.legend(
+            loc='center left',
+            bbox_to_anchor=(1.0, 0.5),
+            fontsize='small',
+            ncol=2  # split into 2 columns if many tickers
+        )
+        fig2.tight_layout()
         img_alloc = fig_to_base64(fig2)
         plt.close(fig2)
 

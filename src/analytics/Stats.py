@@ -13,6 +13,7 @@ from argparse import ArgumentParser
 import math
 from pandas_datareader.data import DataReader as dr
 import traceback
+from numpy.lib.stride_tricks import sliding_window_view
 
 from data.contract.MyContract import contractList
 from data.store import Store
@@ -56,17 +57,24 @@ class Stats():
         global contractList
         close_dict = {}
         valid_symbols = []
+        required_days = int(self.rollingYr * self.TRADING_DAYS) + 1
 
         for i in contractList[:]:
             try:
-                print(i.symbol)
+                # print(i.symbol)
                 rows = self.store.select_daily_price_in_pd_by_range(
                     ticker=i.symbol,
                     fromDate=self.fromDate,
                     toDate=dt.date.today()
                 )
-                close_dict[i.symbol] = rows['close']
-                valid_symbols.append(i.symbol)
+                history_len = len(rows)
+
+                if history_len >= required_days:
+                    close_dict[i.symbol] = rows['close']
+                    valid_symbols.append(i.symbol)
+                else:
+                    print(f"Not enough data for {i.symbol}: {history_len} days (required: {required_days})")
+                    contractList.remove(i)
             except Exception as error:
                 print("An error occurred:", error)
                 traceback.print_exc()
@@ -81,6 +89,8 @@ class Stats():
 
         # Track tickers
         self.recvTickers.extend(valid_symbols)
+
+        print("size of close price data=", self.Closeprice.shape)
 
 
     def load_div_expense(self):

@@ -18,7 +18,7 @@ from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.models import Model
 import sys, inspect
 
-from src.data.model.daily_price import Currency
+from src.data.model.my_model import Currency
 from src.data.store import Store
 
 

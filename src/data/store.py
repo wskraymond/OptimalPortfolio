@@ -15,7 +15,7 @@ from datetime import datetime
 from cassandra.cqlengine.management import sync_table, drop_table
 from cassandra.cqlengine.models import Model
 
-from data.model.daily_price import DailyPrice, Currency, Portfolio, Fund, Dividend, Stock
+from data.model.my_model import DailyPrice, Currency, Portfolio, Fund, Dividend, Stock
 import concurrent.futures
 import pandas as pd
 from ibapi.contract import Contract

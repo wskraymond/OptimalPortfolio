@@ -3,13 +3,15 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from analytics.Analyzer import RollingPortfolioAnalyzer
 from analytics.Allocation import Allocation
-from data.contract.MyContract import contractList
 from data.store import Store
 import pandas as pd
 import numpy as np
 from ibapi.contract import Contract
 import subprocess
 import os
+from flask import request
+import math
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -17,8 +19,11 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 store_host = 'host.docker.internal'
 store = Store(hosts=[store_host], keyspace='store')
 
+# Global analyzer instance
+my_analyzer = None
+# In-memory store of selected tickers (per session)
+selected_stocks = []
 
-from flask import request
 
 @app.post("/api/update_input")
 def update_input():
@@ -55,7 +60,7 @@ def positions():
 
 @app.get("/api/covariance")
 def covariance():
-    alloc = Allocation(analyzer.stats, analyzer.stats.returns, analyzer.stats.div_return)
+    alloc = Allocation(my_analyzer.stats, my_analyzer.stats.returns, my_analyzer.stats.div_return)
     alloc.preload()
 
     # Portfolio weights
@@ -73,7 +78,7 @@ def covariance():
 
 
     # HPR series aligned to tickers
-    hpr_series = pd.Series(alloc.hpr, index=analyzer.stats.recvTickers)
+    hpr_series = pd.Series(alloc.hpr, index=my_analyzer.stats.recvTickers)
     hpr_series = hpr_series.reindex(tickers).fillna(0)
 
     weighted_hpr_series = hpr_series * weights
@@ -88,7 +93,7 @@ def covariance():
 
 @app.get("/api/betas")
 def betas():
-    result = analyzer.run_alpha(benchmark="VOO")
+    result = my_analyzer.run_alpha(benchmark="VOO")
 
     betas_dict = result["beta"]   # {benchmark: {ticker: slope}}
     alphas_dict = result["alpha"] # {ticker: alpha}
@@ -128,17 +133,14 @@ def betas():
 @app.get("/api/tangent")
 def tangent():
     """Optimal tangent portfolio weights using Allocation"""
-    alloc = Allocation(analyzer.stats, analyzer.stats.returns, analyzer.stats.div_return)
+    alloc = Allocation(my_analyzer.stats, my_analyzer.stats.returns, my_analyzer.stats.div_return)
     alloc.preload()
     alloc.optimize()
     return jsonify(alloc.get_allocation())
 
-import math
-import numpy as np
-
 @app.get("/api/risk")
 def risk():
-    alloc = Allocation(analyzer.stats, analyzer.stats.returns, analyzer.stats.div_return)
+    alloc = Allocation(my_analyzer.stats, my_analyzer.stats.returns, my_analyzer.stats.div_return)
     alloc.preload()
 
     # Portfolio weights
@@ -152,7 +154,7 @@ def risk():
 
     # Portfolio beta
     benchmark = "VOO"
-    beta_alpha = analyzer.run_alpha(benchmark=benchmark)
+    beta_alpha = my_analyzer.run_alpha(benchmark=benchmark)
     flat_betas = beta_alpha["beta"].get(benchmark, {})
     portfolio_beta = sum(
         (df["market_value"].get(t, 0) / portfolio_value) * b
@@ -210,6 +212,7 @@ def update_params():
 
 SUPPORTED_CMDS = {
     "div": "run_div",
+    "tangent": "run_static_optimal",
     "o": "run_optimal",
     "o_avg": "run_optimal_avg",
     "corr": "run_corr",
@@ -250,11 +253,10 @@ def handle_run_analysis(data):
     divTaxRate = float(args.get("divTaxRate", 0.3))
 
 
-    global contractList
-    contractList.clear()
-    contractList.extend(store.select_contracts_by_tickers(selected_stocks))
-    print("Updated contractList based on selected stocks:", contractList)
+    portf_list = store.select_contracts_by_tickers(selected_stocks)
+    print("Updated portf_list based on selected stocks:", portf_list)
     analyzer = RollingPortfolioAnalyzer(
+        portf_list=portf_list,
         startdate=startdate,
         holdingPeriodYear=holdingPeriodYear,
         rollingYr=rollingYr,
@@ -265,6 +267,7 @@ def handle_run_analysis(data):
     method = getattr(analyzer, SUPPORTED_CMDS[cmd])
     result = method()
 
+    del analyzer  # free memory immediately after use
     # Push result back to the client
     emit("analysis_result", result)
 
@@ -367,12 +370,10 @@ def create_contract_from_portfolio_row(row):
     contract.currency = row['currency']['code']
     return contract
 
-# Global analyzer instance
-analyzer = None
-
-def init_analyzer(startdate="01/01/2020", holdingPeriodYear=1, rollingYr=5, divTaxRate=0.3):
-    global analyzer
-    analyzer = RollingPortfolioAnalyzer(
+def init_analyzer(portf_list:list[Contract], startdate="01/01/2020", holdingPeriodYear=1, rollingYr=5, divTaxRate=0.3):
+    global my_analyzer
+    my_analyzer = RollingPortfolioAnalyzer(
+        portf_list=portf_list,
         startdate=startdate,
         holdingPeriodYear=holdingPeriodYear,
         rollingYr=rollingYr,
@@ -383,7 +384,7 @@ def init_analyzer(startdate="01/01/2020", holdingPeriodYear=1, rollingYr=5, divT
 def pre_start_init():
     print("Initializing resources...")
     # Append first portfolio contract to global list
-    global contractList
+    contractList = []
     portfolio_list = store.select_portfolio_in_pd()
     if not portfolio_list.empty:
         for _, row in portfolio_list.iterrows():
@@ -394,10 +395,7 @@ def pre_start_init():
     print("contractList=", contractList)
     # Load config, connect to DB, etc.
 
-    init_analyzer()
-
-# In-memory store of selected tickers (per session)
-selected_stocks = []
+    init_analyzer(portf_list=contractList)
 
 def cassandra_query_all_symbols():
     rows = store.select_all_stocks()

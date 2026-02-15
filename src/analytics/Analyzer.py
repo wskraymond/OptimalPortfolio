@@ -14,7 +14,6 @@ import math
 from pandas_datareader.data import DataReader as dr
 import traceback
 
-from data.contract.MyContract import contractList
 from data.store import Store
 from analytics.Stats import Stats
 from analytics.Allocation import Allocation
@@ -37,12 +36,12 @@ def fig_to_base64(fig, dpi=300):
     return base64.b64encode(buf.read()).decode("utf-8")
 
 class RollingPortfolioAnalyzer:
-    def __init__(self, startdate: str, holdingPeriodYear: float = 0.25,
+    def __init__(self, portf_list:list[Contract], startdate: str, holdingPeriodYear: float = 0.25,
                  rollingYr: float = 5, divTaxRate: float = 0.3, store: Store = None):
         """
         Initialize analyzer: builds Stats, loads data, and precomputes returns/dividends/expenses.
         """
-        self.stats = Stats(startdate, holdingPeriodYear, rollingYr, divTaxRate, store)
+        self.stats = Stats(portf_list=portf_list, startdate=startdate, holdingPeriodYear=holdingPeriodYear, rollingYr=rollingYr, divTaxRate=divTaxRate, store=store)
 
         # Preload all data
         self.stats.loadYC()
@@ -108,6 +107,45 @@ class RollingPortfolioAnalyzer:
 
         return {"summary": summary, "images": images}
     
+    def run_static_optimal(self):
+        """Optimal tangent portfolio weights using Allocation"""
+        alloc = Allocation(self.stats, self.stats.returns, self.stats.div_return)
+        alloc.preload()
+        alloc.optimize()
+
+        # Pie chart of allocations
+        fig, ax = plt.subplots()
+        # top 20 stocks by allocation for better visualization
+        weights = alloc.get_allocation()
+        sorted_weights = dict(sorted(weights.items(), key=lambda x: x[1], reverse=True)[:20])
+        labels = list(sorted_weights.keys())
+        sizes = list(sorted_weights.values())
+
+        # Pie chart with better spacing
+        wedges, texts, autotexts = ax.pie(
+            sizes,
+            autopct='%1.1f%%',
+            startangle=90,
+            pctdistance=0.8,
+            textprops={'fontsize': 9}
+        )
+
+        # Add legend outside the pie
+        ax.legend(wedges, labels, title="Assets", loc="center left", bbox_to_anchor=(1, 0.5))
+
+        # Title with padding
+        ax.set_title(
+            f"Alloc (Top 20) - Optimal Tangent Portfolio Weights over {int(self.stats.holdingPeriodYear)}Y HPR",
+            pad=20
+        )
+        ax.axis('equal')  # Circle shape
+
+        img = fig_to_base64(fig)
+        plt.close(fig)
+
+        return {"images": {"tangent": img}}
+ 
+    
     def run_optimal(self):
         """Rolling optimal allocations (cmd == 'o')."""
         rolling_return = self.stats.rolling_return_list()
@@ -131,13 +169,15 @@ class RollingPortfolioAnalyzer:
         fig1, ax1 = plt.subplots()
         ratio_m.plot(ax=ax1)
         ax1.set_title(f"Ratio - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y window")
-        img_ratio = fig_to_base64(fig1); plt.close(fig1)
+        img_ratio = fig_to_base64(fig1)
+        plt.close(fig1)
 
         # Plot allocation
         fig2, ax2 = plt.subplots()
         alloc_m.plot(ax=ax2)
         ax2.set_title(f"Alloc - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR rolling over {int(self.stats.rollingYr)}Y window")
-        img_alloc = fig_to_base64(fig2); plt.close(fig2)
+        img_alloc = fig_to_base64(fig2)
+        plt.close(fig2)
 
         return {"images": {"ratio": img_ratio, "allocation": img_alloc}}
 

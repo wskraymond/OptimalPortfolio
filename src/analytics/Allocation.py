@@ -13,8 +13,6 @@ from argparse import ArgumentParser
 import math
 from pandas_datareader.data import DataReader as dr
 import traceback
-
-from data.contract.MyContract import contractList
 from data.store import Store
 from analytics.Stats import Stats
 from datetime import datetime

@@ -85,7 +85,7 @@ class AnalyzerTab(QWidget):
         # Dropdown for commands
         self.cmd_dropdown = QComboBox()
         self.cmd_dropdown.addItems([
-            "div", "o", "o_avg", "corr", "corr_3d", "ewm_corr_avg",
+            "div", "tangent", "o", "o_avg", "corr", "corr_3d", "ewm_corr_avg",
             "alpha", "alpha_avg", "beta_avg", "var", "ewm_var", "std", "std_avg"
         ])
         layout.addWidget(self.cmd_dropdown)

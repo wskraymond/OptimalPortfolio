@@ -17,7 +17,3 @@ AAPL.symbol = "AAPL"
 AAPL.secType = "STK"
 AAPL.exchange = "SMART"
 AAPL.currency = "USD"
-
-contractList = [
-]
-

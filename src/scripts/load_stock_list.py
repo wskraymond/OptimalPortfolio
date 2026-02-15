@@ -1,7 +1,7 @@
 from datetime import datetime
 import time
 import traceback
-from data.model.daily_price import Currency, Stock
+from data.model.my_model import Currency, Stock
 import pandas as pd
 from data.store import Store
 from ibapi.contract import Contract

@@ -14,8 +14,7 @@ import math
 from pandas_datareader.data import DataReader as dr
 import traceback
 from numpy.lib.stride_tricks import sliding_window_view
-
-from data.contract.MyContract import contractList
+from ibapi.contract import Contract
 from data.store import Store
 from datetime import datetime
 import mplcursors
@@ -25,7 +24,8 @@ store_host = 'host.docker.internal'
 
 
 class Stats():
-    def __init__(self, startdate, holdingPeriodYear, rollingYr, divTaxRate, store):
+    def __init__(self, portf_list:list[Contract], startdate, holdingPeriodYear, rollingYr, divTaxRate, store):
+        self.portf_list = portf_list
         self.TRADING_DAYS = 252
         self.holdingPeriodYear = holdingPeriodYear
         self.no_of_days = self.TRADING_DAYS * self.holdingPeriodYear  # number of days for a quarter = 63
@@ -54,12 +54,11 @@ class Stats():
         self.yc = yc
 
     def loadDailyPrice(self):
-        global contractList
         close_dict = {}
         valid_symbols = []
         required_days = int(self.rollingYr * self.TRADING_DAYS) + 1
 
-        for i in contractList[:]:
+        for i in self.portf_list[:]:
             try:
                 # print(i.symbol)
                 rows = self.store.select_daily_price_in_pd_by_range(
@@ -74,12 +73,12 @@ class Stats():
                     valid_symbols.append(i.symbol)
                 else:
                     print(f"Not enough data for {i.symbol}: {history_len} days (required: {required_days})")
-                    contractList.remove(i)
+                    self.portf_list.remove(i)
             except Exception as error:
                 print("An error occurred:", error)
                 traceback.print_exc()
                 print("symbol=", i.symbol, " cannot be resolved")
-                contractList.remove(i)
+                self.portf_list.remove(i)
 
         # Build DataFrame at once
         self.Closeprice = pd.DataFrame(close_dict)
@@ -97,11 +96,10 @@ class Stats():
         """
         Refactored method to load dividend and expense ratio data directly from the Cassandra store.
         """
-        global contractList
         div_dict = {}
         expense_ratio_dict = {}
 
-        for contract in contractList:
+        for contract in self.portf_list:
             try:
                 print(f"Loading data for {contract.symbol}")
 

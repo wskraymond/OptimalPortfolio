@@ -3,7 +3,7 @@ import time
 import traceback
 import pandas as pd
 from data.store import Store
-from data.model.daily_price import Fund, Dividend
+from data.model.my_model import Fund, Dividend
 import yfinance as yf
 from yahooquery import Ticker
 from ibapi.contract import Contract

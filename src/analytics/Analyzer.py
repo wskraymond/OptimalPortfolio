@@ -143,7 +143,7 @@ class RollingPortfolioAnalyzer:
         img = fig_to_base64(fig)
         plt.close(fig)
 
-        return {"images": {"tangent": img}}
+        return {"selected": labels, "images": {"tangent": img}}
  
     
     def run_optimal(self):

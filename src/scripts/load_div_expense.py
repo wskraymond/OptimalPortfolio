@@ -7,7 +7,6 @@ from data.model.my_model import Fund, Dividend
 import yfinance as yf
 from yahooquery import Ticker
 from ibapi.contract import Contract
-from data.contract.MyContract import contractList
 
 store_host = 'host.docker.internal'
 store = Store(hosts=[store_host], keyspace='store')
@@ -112,15 +111,15 @@ def create_contract_from_portfolio_row(row):
 def pre_start_init():
     print("Initializing resources...")
     # Append first portfolio contract to global list
-    global contractList
+    contractList = []
     contractList.extend(store.select_all_stocks_in_contract())
 
     print("contractList=", contractList)
-    # Load config, connect to DB, etc.
+    return contractList
 
 # Example usage
 if __name__ == "__main__":
-    pre_start_init()
+    contractList = pre_start_init()
     from_date = "2010-01-01"
 
     load_div_expense_to_store(contractList, from_date)

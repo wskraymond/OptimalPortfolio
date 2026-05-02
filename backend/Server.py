@@ -305,7 +305,7 @@ def handle_load_data(data=None):
     script_map = {
         "stock": "src/scripts/load_stock_list.py",
         "div": "src/scripts/load_div_expense.py",
-        "ibdata": "IBData.py"
+        "ibdata": "src/scripts/IBData.py"
     }
 
     if script_name not in script_map:
@@ -323,8 +323,7 @@ def handle_load_data(data=None):
             cwd=workspace_root,
             env=env,
             capture_output=True,
-            text=True,
-            timeout=300
+            text=True
         )
 
         if result.returncode == 0:

@@ -5,7 +5,6 @@ from ibapi.contract import Contract
 import requests
 
 from data.common.CountDownLatch import CountDownLatch
-from data.contract.MyContract import contractList
 from data.store import Store
 from datetime import datetime
 import time
@@ -142,6 +141,7 @@ time.sleep(3)
 app.reqAccountUpdates(True, "") # Request portfolio data
 time.sleep(10) # Wait to receive portfolio data
 
+contractList = []
 contractList.extend(app.get_store().select_all_stocks_in_contract()) # Load S&P stocks from the store to contractList
 
 print("start requesting historical data")

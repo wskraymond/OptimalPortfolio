@@ -37,7 +37,7 @@ host = "http://localhost:5000"
 API_BASE = "http://localhost:5000/api"
 
 # Socket.IO client
-sio = socketio.Client()
+sio = socketio.Client(request_timeout=None)
 
 
 class ImageViewer(QDialog):
@@ -108,7 +108,7 @@ class AnalyzerTab(QWidget):
         self.result_received.connect(self.display_results)
 
         if not sio.connected:
-            sio.connect(host)
+            sio.connect(host, wait_timeout=None)
 
             @sio.on("analysis_result")
             def on_result(data):
@@ -132,6 +132,11 @@ class AnalyzerTab(QWidget):
             widget = self.scroll_layout.itemAt(i).widget()
             if widget:
                 widget.setParent(None)
+
+        top20 = data.get("selected", [])
+        if top20:
+            print("top 20 allocatio stocks", top20 )
+            sio.emit("set_selected_stocks", {"selected": top20})
 
         images = data.get("images", {})
         for name, b64 in images.items():
@@ -611,7 +616,7 @@ class ConfigTab(QWidget):
 
         if selected == "ALL":
             # add all tickers from all buckets
-            for tickers in self.bucket_map.values():
+            for tickers in self.bucket_map.values():    
                 for t in tickers:
                     if t not in current:
                         current.append(t)

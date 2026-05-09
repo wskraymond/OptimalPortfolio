@@ -204,7 +204,18 @@ def update_params():
     rollingYr = float(data.get("rollingYr", 5))
     divTaxRate = float(data.get("divTaxRate", 0.3))
 
-    init_analyzer(startdate, holdingPeriodYear, rollingYr, divTaxRate)
+    # Append first portfolio contract to global list
+    contractList = []
+    portfolio_list = store.select_portfolio_in_pd()
+    if not portfolio_list.empty:
+        for _, row in portfolio_list.iterrows():
+            contract = create_contract_from_portfolio_row(row)
+            contractList.append(contract)
+
+
+    print("contractList=", contractList)
+
+    init_analyzer(portf_list=contractList, startdate=startdate, holdingPeriodYear=holdingPeriodYear, rollingYr=rollingYr, divTaxRate=divTaxRate)
     return jsonify({"status": "analyzer reinitialized"})
 
 

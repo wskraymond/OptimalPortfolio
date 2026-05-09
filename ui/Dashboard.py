@@ -585,12 +585,15 @@ class ConfigTab(QWidget):
         self.stock_dropdown.clear()
         self.stock_dropdown.addItem("ALL")
 
-        # Add bucket names
         for bucket in self.bucket_map.keys():
             self.stock_dropdown.addItem(bucket)
+
+        # Add bucket names
+        for bucket in self.bucket_map.keys():
             # Add individual tickers (just ticker name, no prefix)
             for t in self.bucket_map[bucket]:
                 self.stock_dropdown.addItem(t)
+        
 
     def on_stocks_selected(self, data):
         self.selected_list.clear()

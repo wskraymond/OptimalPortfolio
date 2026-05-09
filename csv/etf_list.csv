@@ -1,0 +1,93 @@
+Ticker,Name,Nature,Expense Ratio (%),RankGroup,US Listed (USD),Liquidity Tier,TierRank
+AGG,iShares Core U.S. Aggregate Bond ETF,Defensive,0.03,6.0,,Core / Liquid,1
+BND,Vanguard Total Bond Market ETF,Defensive,0.03,6.0,,Core / Liquid,1
+ITOT,iShares Core S&P Total U.S. Stock Market ETF,Dominant Market,0.03,1.0,,Core / Liquid,1
+IVV,iShares Core S&P 500 ETF,Dominant Market,0.03,1.0,,Core / Liquid,1
+SCHB,Schwab U.S. Broad Market ETF,Dominant Market,0.03,1.0,,Core / Liquid,1
+VOO,Vanguard S&P 500 ETF,Dominant Market,0.03,1.0,,Core / Liquid,1
+VTI,Vanguard Total Stock Market ETF,Dominant Market,0.03,1.0,,Core / Liquid,1
+BIV,Vanguard Intermediate-Term Bond ETF,Defensive,0.04,6.0,,Core / Liquid,1
+VMBS,Vanguard Mortgage-Backed Securities ETF,Defensive,0.04,6.0,,Core / Liquid,1
+VTV,Vanguard Value ETF,Stable Growth,0.04,2.0,,Core / Liquid,1
+VUG,Vanguard Growth ETF,Momentum,0.04,3.0,,Core / Liquid,1
+VEA,Vanguard FTSE Developed Markets ETF,Dominant Market / Intl,0.05,1.0,,Core / Liquid,1
+VIG,Vanguard Dividend Appreciation ETF,Stable Growth,0.05,2.0,,Core / Liquid,1
+SCHD,Schwab U.S. Dividend Equity ETF,Stable Growth,0.06,2.0,,Core / Liquid,1
+BNDX,Vanguard Total International Bond ETF,Defensive,0.07,6.0,,Core / Liquid,1
+MUB,iShares National Muni Bond ETF,Defensive,0.07,6.0,,Core / Liquid,1
+VXUS,Vanguard Total International Stock ETF,Dominant Market / Intl,0.07,1.0,,Core / Liquid,1
+XLC,Communication Services Select Sector SPDR Fund,Dominant Market,0.08,1.0,,Core / Liquid,1
+IEMG,iShares Core MSCI Emerging Markets ETF,Dominant Market / EM,0.09,1.0,,Core / Liquid,1
+SGOV,iShares 0-3 Month Treasury Bond ETF,Cash / Defensive,0.09,6.0,,Core / Liquid,1
+SPY,SPDR S&P 500 ETF Trust,Dominant Market,0.09,1.0,,Core / Liquid,1
+XLB,Materials Select Sector SPDR Fund,Momentum,0.09,3.0,,Core / Liquid,1
+XLE,Energy Select Sector SPDR Fund,Momentum,0.09,3.0,,Core / Liquid,1
+XLF,Financial Select Sector SPDR Fund,Dominant Market,0.09,1.0,,Core / Liquid,1
+XLI,Industrial Select Sector SPDR Fund,Stable Growth,0.09,2.0,,Core / Liquid,1
+XLK,Technology Select Sector SPDR Fund,Momentum,0.09,3.0,,Core / Liquid,1
+XLV,Health Care Select Sector SPDR Fund,Stable Growth,0.09,2.0,,Core / Liquid,1
+VFH,Vanguard Financials ETF,Dominant Market,0.1,1.0,,Core / Liquid,1
+VGT,Vanguard Information Technology ETF,Momentum,0.1,3.0,,Core / Liquid,1
+VHT,Vanguard Health Care ETF,Stable Growth,0.1,2.0,,Core / Liquid,1
+VWO,Vanguard FTSE Emerging Markets ETF,Dominant Market / EM,0.1,1.0,,Core / Liquid,1
+VNQ,Vanguard Real Estate ETF,Stable Growth,0.13,2.0,,Core / Liquid,1
+BIL,SPDR Bloomberg 1-3 Month T-Bill ETF,Cash / Defensive,0.14,6.0,,Core / Liquid,1
+LQD,iShares iBoxx $ Investment Grade Corporate Bond ETF,Defensive,0.14,6.0,,Core / Liquid,1
+IEF,iShares 7-10 Year Treasury Bond ETF,Defensive,0.15,6.0,,Core / Liquid,1
+MTUM,iShares MSCI USA Momentum Factor ETF,Momentum,0.15,3.0,,Core / Liquid,1
+QQQM,Invesco NASDAQ 100 ETF,Momentum,0.15,3.0,,Core / Liquid,1
+QUAL,iShares MSCI USA Quality Factor ETF,Stable Growth,0.15,2.0,,Core / Liquid,1
+SHY,iShares 1-3 Year Treasury Bond ETF,Defensive,0.15,6.0,,Core / Liquid,1
+TLT,iShares 20+ Year Treasury Bond ETF,Defensive,0.15,6.0,,Core / Liquid,1
+USMV,iShares MSCI USA Min Vol Factor ETF,Stable Growth,0.15,2.0,,Core / Liquid,1
+TIP,iShares TIPS Bond ETF,Defensive,0.19,6.0,,Core / Liquid,1
+QQQ,Invesco QQQ Trust,Momentum,0.2,3.0,,Core / Liquid,1
+EEM,iShares MSCI Emerging Markets ETF,Dominant Market / EM,0.66,1.0,,Core / Liquid,1
+VO,Vanguard Mid-Cap ETF,Stable Growth,0.04,2.0,,More Specialized,2
+VV,Vanguard Large-Cap ETF,Dominant Market,0.04,1.0,,More Specialized,2
+VB,Vanguard Small-Cap ETF,Momentum,0.05,3.0,,More Specialized,2
+SCHF,Schwab International Equity ETF,Dominant Market / Intl,0.06,1.0,,More Specialized,2
+FLJP,Franklin FTSE Japan ETF,Stable Growth / Japan,0.09,2.0,,More Specialized,2
+FLKR,Franklin FTSE South Korea ETF,Asia Tech / Dominant Market,0.09,1.0,,More Specialized,2
+GLDM,SPDR Gold MiniShares Trust,Diversifier / Gold,0.1,9.0,True,More Specialized,2
+VDC,Vanguard Consumer Staples ETF,Stable Growth,0.1,2.0,,More Specialized,2
+VIS,Vanguard Industrials ETF,Stable Growth,0.1,2.0,,More Specialized,2
+VPU,Vanguard Utilities ETF,Stable Growth,0.1,2.0,,More Specialized,2
+VNQI,Vanguard Global ex-U.S. Real Estate ETF,Stable Growth,0.12,2.0,,More Specialized,2
+VLUE,iShares MSCI USA Value Factor ETF,High Alpha / Factor,0.15,4.0,,More Specialized,2
+DIA,SPDR Dow Jones Industrial Average ETF Trust,Dominant Market,0.16,1.0,,More Specialized,2
+IJH,iShares Core S&P Mid-Cap ETF,Momentum,0.18,3.0,,More Specialized,2
+IJR,iShares Core S&P Small-Cap ETF,Momentum,0.18,3.0,,More Specialized,2
+FLTW,Franklin FTSE Taiwan ETF,Asia Tech / Dominant Market,0.19,1.0,,More Specialized,2
+IAU,iShares Gold Trust,Diversifier / Gold,0.25,9.0,True,More Specialized,2
+OUNZ,VanEck Merk Gold Trust,Diversifier / Gold,0.25,9.0,True,More Specialized,2
+SIVR,abrdn Physical Silver Shares ETF,Diversifier / Silver,0.3,9.0,True,More Specialized,2
+SMH,VanEck Semiconductor ETF,High Alpha,0.35,4.0,,More Specialized,2
+SOXX,iShares Semiconductor ETF,High Alpha,0.35,4.0,,More Specialized,2
+XBI,SPDR S&P Biotech ETF,High Alpha,0.35,4.0,,More Specialized,2
+XHB,SPDR S&P Homebuilders ETF,Momentum,0.35,3.0,,More Specialized,2
+XME,SPDR S&P Metals & Mining ETF,High Alpha,0.35,4.0,,More Specialized,2
+ITA,iShares U.S. Aerospace & Defense ETF,Stable Growth,0.4,2.0,,More Specialized,2
+IYT,iShares U.S. Transportation ETF,Momentum,0.4,3.0,,More Specialized,2
+IGV,iShares Expanded Tech-Software Sector ETF,High Alpha / Momentum,0.41,4.0,,More Specialized,2
+IBB,iShares Biotechnology ETF,High Alpha,0.45,4.0,,More Specialized,2
+USCI,United States Commodity Index Fund,Commodity Sector,0.45,5.0,True,More Specialized,2
+USO,United States Oil Fund LP,Commodity Sector,0.45,5.0,True,More Specialized,2
+DXJ,WisdomTree Japan Hedged Equity Fund,Momentum / Japan,0.48,3.0,,More Specialized,2
+EWJ,iShares MSCI Japan ETF,Stable Growth / Japan,0.5,2.0,,More Specialized,2
+MDY,SPDR S&P MidCap 400 ETF Trust,Momentum,0.5,3.0,,More Specialized,2
+SLV,iShares Silver Trust,Diversifier / Silver,0.5,9.0,True,More Specialized,2
+UNG,United States Natural Gas Fund LP,Commodity Sector,0.5,5.0,True,More Specialized,2
+GDX,VanEck Gold Miners ETF,High Alpha / Diversifier,0.51,4.0,,More Specialized,2
+EWT,iShares MSCI Taiwan ETF,Asia Tech / Dominant Market,0.59,1.0,,More Specialized,2
+EWY,iShares MSCI South Korea ETF,Asia Tech / Dominant Market,0.59,1.0,,More Specialized,2
+MCHI,iShares MSCI China ETF,Dominant Market / China,0.59,1.0,,More Specialized,2
+PDBC,Invesco Optimum Yield Diversified Commodity Strategy No K-1 ETF,Commodity Sector,0.59,5.0,True,More Specialized,2
+CIBR,First Trust NASDAQ Cybersecurity ETF,High Alpha,0.6,4.0,,More Specialized,2
+INDA,iShares MSCI India ETF,Dominant Market / India,0.64,1.0,,More Specialized,2
+ASHR,Xtrackers Harvest CSI 300 China A-Shares ETF,Dominant Market / China,0.65,1.0,,More Specialized,2
+GSG,iShares S&P GSCI Commodity-Indexed Trust,Commodity Sector,0.75,5.0,True,More Specialized,2
+DBA,Invesco DB Agriculture Fund,Commodity Sector,0.77,5.0,True,More Specialized,2
+CPER,United States Copper Index Fund,Commodity Sector,0.8,5.0,True,More Specialized,2
+EPI,WisdomTree India Earnings Fund,Stable Growth / India,0.84,2.0,,More Specialized,2
+DBC,Invesco DB Commodity Index Tracking Fund,Commodity Sector,0.85,5.0,True,More Specialized,2

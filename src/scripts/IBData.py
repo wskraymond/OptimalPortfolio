@@ -161,7 +161,7 @@ for id, contract in reqId_contract_map.items():
             reqId=id,
             contract=contract,
             endDateTime="",
-            durationStr="10 Y",
+            durationStr="15 Y",
             barSizeSetting="1 day",
             whatToShow="ADJUSTED_LAST",
             useRTH=0,

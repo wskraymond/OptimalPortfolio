@@ -153,7 +153,8 @@ class RollingPortfolioAnalyzer:
 
         def rolling_optimize(ret, div):
             alloc = Allocation(self.stats, ret, div)
-            alloc.preload(); alloc.optimize()
+            alloc.preload()
+            alloc.optimize()
             return alloc
 
         rolling_alloc = [rolling_optimize(r.dropna(), d.dropna())
@@ -207,42 +208,52 @@ class RollingPortfolioAnalyzer:
         alloc_mean = alloc_m.ewm(halflife=halflife, times=alloc_m.index).mean()
         ratio_mean = ratio_m.ewm(halflife=halflife, times=ratio_m.index).mean()
 
-        # --- NEW PART: Select top 20 stocks by average allocation ---
-        avg_alloc = alloc_mean.mean(axis=0)  # average allocation per stock
-        top20_stocks = avg_alloc.nlargest(20).index
-        alloc_mean_top20 = alloc_mean[top20_stocks]
+
+        # Marker styles and line styles for better distinction
+        markers = ['o', 's', '^', 'D', 'v', '<', '>', 'p', '*', 'h', '+', 'x', 'X', 'd', '|', '_'] * 5
+        line_styles = ['-', '--', '-.', ':'] * 5
 
         # Plot ratio
-        fig1, ax1 = plt.subplots()
-        ratio_mean.plot(ax=ax1)
+        fig1, ax1 = plt.subplots(figsize=(14, 6))
+        for idx, col in enumerate(ratio_mean.columns):
+            ax1.plot(ratio_mean.index, ratio_mean[col], label=col, linewidth=2,
+                    marker=markers[idx % len(markers)], markevery=max(1, len(ratio_mean)//10),
+                    linestyle=line_styles[idx % len(line_styles)])
         ax1.set_title(
             f"Ratio - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR "
             f"rolling over {int(self.stats.rollingYr)}Y EMA"
         )
-        ax1.grid(True)
-        # Move legend outside
-        ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5), fontsize='small')
+        ax1.grid(True, alpha=0.3)
+        ax1.set_xlabel("Date")
+        ax1.set_ylabel("Ratio")
+        # Move legend outside with more columns
+        ax1.legend(loc='center left', bbox_to_anchor=(1.0, 0.5), fontsize=9, ncol=1)
         fig1.tight_layout()
-        img_ratio = fig_to_base64(fig1)
+        img_ratio = fig_to_base64(fig1, dpi=150)
         plt.close(fig1)
 
-        # Plot allocations (only top 20)
-        fig2, ax2 = plt.subplots()
-        alloc_mean_top20.plot(ax=ax2)
+        # Plot allocations
+        fig2, ax2 = plt.subplots(figsize=(14, 7))
+        for idx, col in enumerate(alloc_mean.columns):
+            ax2.plot(alloc_mean.index, alloc_mean[col], label=col, linewidth=2.5,
+                    marker=markers[idx % len(markers)], markevery=max(1, len(alloc_mean)//10),
+                    linestyle=line_styles[idx % len(line_styles)])
         ax2.set_title(
-            f"Alloc (Top 20) - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR "
+            f"Alloc - optimal portfolio with {int(self.stats.holdingPeriodYear)}Y HPR "
             f"rolling over {int(self.stats.rollingYr)}Y EMA"
         )
-        ax2.grid(True)
-        # Move legend outside, compact
+        ax2.grid(True, alpha=0.3)
+        ax2.set_xlabel("Date")
+        ax2.set_ylabel("Allocation Weight")
+        # Move legend outside, compact with 2 columns
         ax2.legend(
             loc='center left',
             bbox_to_anchor=(1.0, 0.5),
-            fontsize='small',
-            ncol=2  # split into 2 columns if many tickers
+            fontsize=9,
+            ncol=2  # split into 2 columns for better readability
         )
         fig2.tight_layout()
-        img_alloc = fig_to_base64(fig2)
+        img_alloc = fig_to_base64(fig2, dpi=150)
         plt.close(fig2)
 
         return {"images": {"ratio": img_ratio, "allocation": img_alloc}}

@@ -11,7 +11,6 @@ import subprocess
 import os
 from flask import request
 import math
-import numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -49,11 +48,12 @@ def positions():
         records.append({
             "Ticker": row.name,  # ticker is index
             "MarketValue": row.get("market_value", 0),
-            "Beta": row.get("beta", None),  # if you store beta in Portfolio or compute separately
+            "Beta": row.get("beta", None),
             "Qty": row.get("qty", 0),
             "Price": row.get("price", 0.0),
+            "AvgCost": row.get("avg_cost", 0.0),
             "Position": row.get("position_type", "None"),
-            "Input": row.get("input", "Manual")  # default if not stored
+            "Input": row.get("input", "Manual")
         })
     return jsonify(records)
 

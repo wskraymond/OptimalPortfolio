@@ -238,9 +238,48 @@ class PortfolioVisualizer(QMainWindow):
         if risk:
             self.risk_metrics = risk
 
+        # Calculate portfolio metrics AFTER tangent data is set
+        if not self.positions_df.empty:
+            self.positions_df = self._calculate_portfolio_metrics(self.positions_df)
+
         self.render_allocation()
         self.render_beta()
         self.render_corr()
+
+    def _calculate_portfolio_metrics(self, df):
+        """Calculate PnL%, UnrealizedPnL, CurrentWeight%, TangentWeight%, QtyToRebalance"""
+        if df.empty:
+            return df
+        
+        # Calculate total market value
+        total_mv = df["MarketValue"].sum()
+        
+        # PnL% = (Price - AvgCost) / AvgCost * 100
+        df["PnL%"] = df.apply(
+            lambda row: ((row["Price"] - row["AvgCost"]) / row["AvgCost"] * 100) 
+                       if row["AvgCost"] > 0 else 0, 
+            axis=1
+        )
+        
+        # UnrealizedPnL = MarketValue - AvgCost * Qty
+        df["UnrealizedPnL"] = df["MarketValue"] - (df["AvgCost"] * df["Qty"])
+        
+        # CurrentWeight% = MarketValue / TotalMarketValue * 100
+        df["CurrentWeight%"] = (df["MarketValue"] / total_mv * 100) if total_mv > 0 else 0
+        
+        # TangentWeight% - get from tangent data
+        df["TangentWeight%"] = df["Ticker"].apply(
+            lambda ticker: self.tangent.get(ticker, 0.0) * 100 if self.tangent else 0
+        )
+        
+        # QtyToRebalance = (TangentWeight * TotalMV / Price) - CurrentQty
+        df["QtyToRebalance"] = df.apply(
+            lambda row: (row["TangentWeight%"] / 100 * total_mv / row["Price"] - row["Qty"]) 
+                       if row["Price"] > 0 and total_mv > 0 else 0,
+            axis=1
+        )
+        
+        return df
 
     def _refresh_allocation_with_params(self):
         params = {
@@ -357,23 +396,33 @@ class PortfolioVisualizer(QMainWindow):
             self.tangent_ax.set_title("Tangent portfolio weights")
         self.tangent_canvas.draw_idle()
 
-        # --- Portfolio table with tangent weights ---
+        # --- Portfolio table with new calculated fields ---
         if not self.positions_df.empty:
-            cols = ["Ticker", "MarketValue", "Qty", "Price", "Position", "Input", "Tangent Weight"]
+            cols = ["Ticker", "MarketValue", "Qty", "Price", "AvgCost", "PnL%", "UnrealizedPnL", 
+                    "CurrentWeight%", "TangentWeight%", "QtyToRebalance", "Position", "Input"]
             self.portfolio_table.clear()
             self.portfolio_table.setRowCount(len(self.positions_df))
             self.portfolio_table.setColumnCount(len(cols))
             self.portfolio_table.setHorizontalHeaderLabels(cols)
 
             for i, row in self.positions_df.iterrows():
-                ticker = row.get("Ticker", "")
                 for j, col in enumerate(cols):
-                    if col == "Tangent Weight":
-                        val = self.tangent.get(ticker, 0.0)
-                        item = QTableWidgetItem(f"{val:.6f}")
+                    val = row.get(col, "")
+                    
+                    # Format floating point values appropriately
+                    if col in ["PnL%", "CurrentWeight%", "TangentWeight%"]:
+                        item = QTableWidgetItem(f"{float(val):.2f}%")
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    elif col in ["UnrealizedPnL", "QtyToRebalance"]:
+                        item = QTableWidgetItem(f"{float(val):.4f}")
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    elif col in ["Price", "AvgCost", "MarketValue"]:
+                        item = QTableWidgetItem(f"{float(val):.2f}")
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    elif col == "Qty":
+                        item = QTableWidgetItem(str(int(val)))
                         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     else:
-                        val = row.get(col, "")
                         item = QTableWidgetItem(str(val))
                         if col != "Input":
                             item.setFlags(item.flags() & ~Qt.ItemIsEditable)

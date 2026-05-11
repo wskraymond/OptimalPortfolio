@@ -247,7 +247,8 @@ class PortfolioVisualizer(QMainWindow):
         self.render_corr()
 
     def _calculate_portfolio_metrics(self, df):
-        """Calculate PnL%, UnrealizedPnL, CurrentWeight%, TangentWeight%, QtyToRebalance"""
+        """Calculate PnL%, UnrealizedPnL, CurrentWeight%, TangentWeight%, QtyToRebalance
+        Uses Input (target_weight) if set, otherwise uses TangentWeight%"""
         if df.empty:
             return df
         
@@ -272,10 +273,23 @@ class PortfolioVisualizer(QMainWindow):
             lambda ticker: self.tangent.get(ticker, 0.0) * 100 if self.tangent else 0
         )
         
-        # QtyToRebalance = (TangentWeight * TotalMV / Price) - CurrentQty
+        # Helper to get target weight: use Input if not empty, else use TangentWeight%
+        def get_target_weight(row):
+            # Input can be a string representation of a number, or empty string
+            input_val = row.get("Input", "")
+            if input_val and str(input_val).strip():
+                try:
+                    return float(input_val) / 100  # Convert from percentage to decimal
+                except (ValueError, TypeError):
+                    pass
+            # Default to TangentWeight%
+            return row["TangentWeight%"] / 100
+        
+        # QtyToRebalance = (TargetWeight * TotalMV / Price) - CurrentQty
         df["QtyToRebalance"] = df.apply(
-            lambda row: (row["TangentWeight%"] / 100 * total_mv / row["Price"] - row["Qty"]) 
-                       if row["Price"] > 0 and total_mv > 0 else 0,
+            lambda row: (
+                get_target_weight(row) * total_mv / row["Price"] - row["Qty"]
+            ) if row["Price"] > 0 and total_mv > 0 else 0,
             axis=1
         )
         
@@ -360,12 +374,32 @@ class PortfolioVisualizer(QMainWindow):
         col_name = self.portfolio_table.horizontalHeaderItem(item.column()).text()
         if col_name == "Input":
             ticker = self.portfolio_table.item(item.row(), 0).text()  # Ticker is first column
-            new_value = item.text()
+            new_value = item.text().strip()
 
             try:
-                r = requests.post(f"{API_BASE}/update_input", json={"Ticker": ticker, "Input": new_value}, timeout=5)
+                # Send the input value to backend (can be empty, number, or anything)
+                r = requests.post(
+                    f"{API_BASE}/update_input", 
+                    json={"Ticker": ticker, "Input": new_value}, 
+                    timeout=5
+                )
                 r.raise_for_status()
+                
+                # Disconnect signal temporarily to avoid recursive updates during render
+                self.portfolio_table.itemChanged.disconnect(self._on_portfolio_item_changed)
+                
+                # Recalculate metrics and refresh table
+                self.positions_df = self._calculate_portfolio_metrics(self.positions_df)
+                self.render_allocation()
+                
+                # Reconnect signal
+                self.portfolio_table.itemChanged.connect(self._on_portfolio_item_changed)
             except Exception as e:
+                # Ensure signal is reconnected even on error
+                try:
+                    self.portfolio_table.itemChanged.connect(self._on_portfolio_item_changed)
+                except:
+                    pass
                 QMessageBox.critical(self, "Update Error", f"Failed to update Input for {ticker}:\n{e}")
 
 
@@ -413,8 +447,11 @@ class PortfolioVisualizer(QMainWindow):
                     if col in ["PnL%", "CurrentWeight%", "TangentWeight%"]:
                         item = QTableWidgetItem(f"{float(val):.2f}%")
                         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    elif col in ["UnrealizedPnL", "QtyToRebalance"]:
+                    elif col in ["UnrealizedPnL"]:
                         item = QTableWidgetItem(f"{float(val):.4f}")
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    elif col in ["QtyToRebalance"]: #integer or NaN only
+                        item = QTableWidgetItem(str(int(val)) if not pd.isna(val) else "")
                         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     elif col in ["Price", "AvgCost", "MarketValue"]:
                         item = QTableWidgetItem(f"{float(val):.2f}")
@@ -422,10 +459,13 @@ class PortfolioVisualizer(QMainWindow):
                     elif col == "Qty":
                         item = QTableWidgetItem(str(int(val)))
                         item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    elif col == "Input": # editable input field for target weight .2f format
+                        item = QTableWidgetItem(f"{float(val):.2f}" if val != "" else "")
+                        item.setFlags(item.flags() | Qt.ItemIsEditable)
                     else:
                         item = QTableWidgetItem(str(val))
-                        if col != "Input":
-                            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+
                     self.portfolio_table.setItem(i, j, item)
 
             self.portfolio_table.resizeColumnsToContents()

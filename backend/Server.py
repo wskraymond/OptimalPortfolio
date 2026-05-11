@@ -26,14 +26,36 @@ selected_stocks = []
 
 @app.post("/api/update_input")
 def update_input():
-    data = request.json  # expects {"Ticker": "0001.HK", "Input": "NewValue"}
-    ticker = data.get("Ticker")
-    new_input = data.get("Input")
-
-    # Update in-memory POSITIONS list
-
-
-    return jsonify({"status": "success", "updated": {"Ticker": ticker, "Input": new_input}})
+    try:
+        print("Received update_input request with data:", request.json)
+        data = request.json  # expects {"Ticker": "0001.HK", "Input": "NewValue"}
+        if not data:
+            return jsonify({"status": "error", "message": "No data provided"}), 400
+        
+        ticker = data.get("Ticker")
+        new_input = data.get("Input")
+        
+        if not ticker:
+            return jsonify({"status": "error", "message": "Ticker is required"}), 400
+        
+        print(f"Updating ticker {ticker} with new input: {new_input}")
+        # Try to parse the input as a float (representing target weight percentage)
+        # If it can't be parsed or is empty/null, store as 0.0 or None
+        target_weight = None
+        if new_input and str(new_input).strip():
+            try:
+                target_weight = float(new_input)
+            except (ValueError, TypeError):
+                # If it's not a number, treat it as null/None
+                target_weight = None
+        
+        print(f"Updating ticker {ticker} with new target weight: {target_weight}")
+        # Use Store's update method to update target_weight
+        store.update_portfolio(ticker, target_weight=target_weight)
+        print(f"Successfully updated ticker {ticker} in the database with target_weight={target_weight}")
+        return jsonify({"status": "success", "updated": {"Ticker": ticker, "Input": new_input}})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.get("/api/positions")
@@ -50,6 +72,11 @@ def positions():
         # For US-T bonds, convert from percentage of par to actual price
         if ticker == "US-T":
             price = (price / 100) * 1000
+        
+        # Get target_weight, display as empty string if None
+        target_weight = row.get("target_weight")
+        input_value = "" if target_weight is None else target_weight
+        
         records.append({
             "Ticker": ticker,
             "MarketValue": row.get("market_value", 0),
@@ -58,7 +85,7 @@ def positions():
             "Price": price,
             "AvgCost": row.get("avg_cost", 0.0),
             "Position": row.get("position_type", "None"),
-            "Input": row.get("input", "Manual")
+            "Input": input_value  # Use target_weight as the editable input field
         })
     return jsonify(records)
 

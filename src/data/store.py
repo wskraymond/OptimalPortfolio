@@ -166,6 +166,15 @@ class Store:
         tmp.set_index('ticker', inplace=True, drop=True)
         return tmp
 
+    def update_portfolio(self, ticker, **kwargs):
+        """Update portfolio fields for a given ticker"""
+        portfolio_rows = Portfolio.objects.filter(ticker=ticker).all()
+        for row in portfolio_rows:
+            for key, value in kwargs.items():
+                setattr(row, key, value)
+            row.updated_at = datetime.now()
+            row.save()
+
     # --- CRUD Operations for Fund ---
     def insert_fund(self, ticker, expense_ratio, created_at=None, updated_at=None):
         if created_at is None:

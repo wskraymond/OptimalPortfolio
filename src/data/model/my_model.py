@@ -91,6 +91,7 @@ class Portfolio(Model):
     market_value = columns.Float()
     avg_cost = columns.Float()
     currency = columns.UserDefinedType(Currency)
+    target_weight = columns.Float(default=float('nan')) # default to NaN to indicate no target weight set
     updated_at = columns.DateTime(default=datetime.utcnow)
 
     def toMap(self):
@@ -106,6 +107,7 @@ class Portfolio(Model):
                 'code': self.currency.code,
                 'country': self.currency.country
             },
+            'target_weight': self.target_weight,
             'updated_at': self.updated_at
         }
 

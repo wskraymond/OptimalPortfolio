@@ -45,12 +45,17 @@ def positions():
     # Map to mock-style fields
     records = []
     for _, row in df.iterrows():
+        ticker = row.name  # ticker is index
+        price = row.get("price", 0.0)
+        # For US-T bonds, convert from percentage of par to actual price
+        if ticker == "US-T":
+            price = (price / 100) * 1000
         records.append({
-            "Ticker": row.name,  # ticker is index
+            "Ticker": ticker,
             "MarketValue": row.get("market_value", 0),
             "Beta": row.get("beta", None),
             "Qty": row.get("qty", 0),
-            "Price": row.get("price", 0.0),
+            "Price": price,
             "AvgCost": row.get("avg_cost", 0.0),
             "Position": row.get("position_type", "None"),
             "Input": row.get("input", "Manual")

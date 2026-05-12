@@ -174,6 +174,7 @@ class PortfolioVisualizer(QMainWindow):
         self.betas = {}
         self.tangent = {}
         self.risk_metrics = {}
+        self.risk_metrics_target = {}
 
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
@@ -236,7 +237,11 @@ class PortfolioVisualizer(QMainWindow):
         if tan:
             self.tangent = tan
         if risk:
-            self.risk_metrics = risk
+            # New format: risk endpoint returns {"current": {...}, "target": {...}}
+            self.risk_metrics = risk.get("current", {})
+            self.risk_metrics_target = risk.get("target", {})
+        else:
+            self.risk_metrics_target = {}
 
         # Calculate portfolio metrics AFTER tangent data is set
         if not self.positions_df.empty:
@@ -388,9 +393,8 @@ class PortfolioVisualizer(QMainWindow):
                 # Disconnect signal temporarily to avoid recursive updates during render
                 self.portfolio_table.itemChanged.disconnect(self._on_portfolio_item_changed)
                 
-                # Recalculate metrics and refresh table
-                self.positions_df = self._calculate_portfolio_metrics(self.positions_df)
-                self.render_allocation()
+                # Fetch updated data from backend and refresh all tables
+                self.refresh_data_and_render()
                 
                 # Reconnect signal
                 self.portfolio_table.itemChanged.connect(self._on_portfolio_item_changed)
@@ -435,7 +439,8 @@ class PortfolioVisualizer(QMainWindow):
             cols = ["Ticker", "MarketValue", "Qty", "Price", "AvgCost", "PnL%", "UnrealizedPnL", 
                     "CurrentWeight%", "TangentWeight%", "QtyToRebalance", "Position", "Input"]
             self.portfolio_table.clear()
-            self.portfolio_table.setRowCount(len(self.positions_df))
+            # +1 for summary row at the bottom
+            self.portfolio_table.setRowCount(len(self.positions_df) + 1)
             self.portfolio_table.setColumnCount(len(cols))
             self.portfolio_table.setHorizontalHeaderLabels(cols)
 
@@ -468,6 +473,39 @@ class PortfolioVisualizer(QMainWindow):
 
                     self.portfolio_table.setItem(i, j, item)
 
+            # Add summary row at the bottom
+            summary_row = len(self.positions_df)
+            total_market_value = self.positions_df["MarketValue"].sum()
+            total_unrealized_pnl = self.positions_df["UnrealizedPnL"].sum()
+            total_current_weight = self.positions_df["CurrentWeight%"].sum()
+            total_tangent_weight = self.positions_df["TangentWeight%"].sum()
+            total_target_weight = self.positions_df["Input"].sum()
+
+            for j, col in enumerate(cols):
+                if col == "Ticker":
+                    item = QTableWidgetItem("TOTAL")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                elif col == "MarketValue":
+                    item = QTableWidgetItem(f"{total_market_value:.2f}")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                elif col == "UnrealizedPnL":
+                    item = QTableWidgetItem(f"{total_unrealized_pnl:.4f}")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                elif col == "CurrentWeight%":
+                    item = QTableWidgetItem(f"{total_current_weight:.2f}%")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                elif col == "TangentWeight%":
+                    item = QTableWidgetItem(f"{total_tangent_weight:.2f}%")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                elif col == "Input":
+                    item = QTableWidgetItem(f"{total_target_weight:.2f}")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                else:
+                    item = QTableWidgetItem("")
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                
+                self.portfolio_table.setItem(summary_row, j, item)
+
             self.portfolio_table.resizeColumnsToContents()
 
         # --- Risk metrics table (reuse render_risk logic) ---
@@ -482,15 +520,26 @@ class PortfolioVisualizer(QMainWindow):
             rows = list(metrics.items())
             self.risk_table.clear()
             self.risk_table.setRowCount(len(rows))
-            self.risk_table.setColumnCount(2)
-            self.risk_table.setHorizontalHeaderLabels(["Metric", "Value"])
+            # 3 columns: Metric, Value (Current), Value (Target Weight)
+            self.risk_table.setColumnCount(3)
+            self.risk_table.setHorizontalHeaderLabels(["Metric", "Value (Current)", "Value (Target Weight)"])
             for i, (k, v) in enumerate(rows):
                 key_item = QTableWidgetItem(k)
                 val_item = QTableWidgetItem(f"{v:.4f}" if isinstance(v, float) else str(v))
+                val_target_item = QTableWidgetItem("")
+                
+                # Get target weight value if available
+                if self.risk_metrics_target and k in self.risk_metrics_target:
+                    target_val = self.risk_metrics_target[k]
+                    val_target_item = QTableWidgetItem(f"{target_val:.4f}" if isinstance(target_val, float) else str(target_val))
+                
                 key_item.setFlags(key_item.flags() & ~Qt.ItemIsEditable)
                 val_item.setFlags(val_item.flags() & ~Qt.ItemIsEditable)
+                val_target_item.setFlags(val_target_item.flags() & ~Qt.ItemIsEditable)
+                
                 self.risk_table.setItem(i, 0, key_item)
                 self.risk_table.setItem(i, 1, val_item)
+                self.risk_table.setItem(i, 2, val_target_item)
             self.risk_table.resizeColumnsToContents()
 
 

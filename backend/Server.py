@@ -170,26 +170,20 @@ def tangent():
     alloc.optimize()
     return jsonify(alloc.get_allocation())
 
-@app.get("/api/risk")
-def risk():
-    alloc = Allocation(my_analyzer.stats, my_analyzer.stats.returns, my_analyzer.stats.div_return)
-    alloc.preload()
+def _calculate_risk_metrics(weights_dict, alloc:Allocation, portfolio_value, benchmark="VOO"):
+    """Helper function to calculate risk metrics for given weights"""
+    # Reindex weights to match covariance matrix columns
+    weights_series = pd.Series(weights_dict)
+    weights = weights_series.reindex(alloc.cov.columns).fillna(0).values
 
-    # Portfolio weights
-    df = store.select_portfolio_in_pd()
-    weights = df["market_value"] / df["market_value"].sum()
-    portfolio_value = df["market_value"].sum()
-    weights = weights.reindex(alloc.cov.columns).fillna(0).values
-
-    # Use Allocation’s built-in function
+    # Use Allocation's built-in function
     ret, vol, sr = alloc.gen_ret_vol_sr_func()(weights)
 
     # Portfolio beta
-    benchmark = "VOO"
     beta_alpha = my_analyzer.run_alpha(benchmark=benchmark)
     flat_betas = beta_alpha["beta"].get(benchmark, {})
     portfolio_beta = sum(
-        (df["market_value"].get(t, 0) / portfolio_value) * b
+        weights_dict.get(t, 0) * b
         for t, b in flat_betas.items()
     )
 
@@ -212,7 +206,7 @@ def risk():
     # --- M² Alpha ---
     M2, M2_alpha = alloc.calc_period_m2_alpha(weights, benchmark=benchmark)
 
-    return jsonify({
+    return {
         "Total Covariance": float(weights.T @ alloc.cov.values @ weights),
         "Portfolio Risk(%)": vol * 100,
         "Non-Systematic Var": non_sys_var,
@@ -226,6 +220,32 @@ def risk():
         "M2 Alpha": M2_alpha,
         "Value At Risk 95%": var95,
         "Value At Risk 99%": var99
+    }
+
+@app.get("/api/risk")
+def risk():
+    alloc = Allocation(my_analyzer.stats, my_analyzer.stats.returns, my_analyzer.stats.div_return)
+    alloc.preload()
+
+    # Portfolio weights
+    df = store.select_portfolio_in_pd()
+    weights = df["market_value"] / df["market_value"].sum()
+    portfolio_value = df["market_value"].sum()
+
+    #current weights
+    weights_dict = dict(zip(df.index, weights))
+
+    #target weights(convert from percentages to decimals) from DB (if any)
+    target_weights_dict = {k: v / 100 for k, v in df["target_weight"].to_dict().items()}
+
+    benchmark = "VOO"
+
+    current_metrics = _calculate_risk_metrics(weights_dict, alloc, portfolio_value, benchmark=benchmark)
+    target_metrics = _calculate_risk_metrics(target_weights_dict, alloc, portfolio_value, benchmark=benchmark)
+
+    return jsonify({
+        "current": current_metrics,
+        "target": target_metrics
     })
 
 @app.post("/api/update_params")
